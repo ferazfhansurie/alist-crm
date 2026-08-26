@@ -1,5 +1,10 @@
 ### A-List CRM
 
+A-List Malaysia customisation app for Frappe CRM. It owns the sales pipeline
+shape and the stable links back to the existing proposal studio, projects app,
+and SQL Account analytics. It does not duplicate proposal documents, campaign
+operations, or finance records.
+
 A-List Malaysia CRM customisations
 
 ### Installation

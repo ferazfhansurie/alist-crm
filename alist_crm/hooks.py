@@ -5,6 +5,10 @@ app_description = "A-List Malaysia CRM customisations"
 app_email = "hello@adleticagency.com"
 app_license = "mit"
 
+required_apps = ["crm"]
+after_install = "alist_crm.setup.run"
+after_migrate = "alist_crm.setup.run"
+
 # Apps
 # ------------------
 
@@ -246,4 +250,3 @@ app_license = "mit"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-
