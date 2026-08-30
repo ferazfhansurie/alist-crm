@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+from calendar import monthrange
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
@@ -33,6 +34,29 @@ CANONICAL_SHEETS = [
 	"Leads Aug - Boss",
 	"Leads Past Client",
 ]
+
+REPORT_SHEETS = {
+	"Daily Report April 26": 4,
+	"Daily Report May 26": 5,
+	"Daily Report Jun 26": 6,
+	"Daily Report July 26": 7,
+	"Daily Report Aug 26": 8,
+}
+
+MONTHS = {
+	"JANUARY": 1,
+	"FEBRUARY": 2,
+	"MARCH": 3,
+	"APRIL": 4,
+	"MAY": 5,
+	"JUNE": 6,
+	"JULY": 7,
+	"AUGUST": 8,
+	"SEPTEMBER": 9,
+	"OCTOBER": 10,
+	"NOVEMBER": 11,
+	"DECEMBER": 12,
+}
 
 OWNERS = {"TIKA": "Tika", "IZZY": "Izzy", "AIMAN": "Aiman", "FATIN": "Fatin", "FAREEZ": "Fareez"}
 
@@ -198,6 +222,162 @@ def _column_map(value_sheet, formula_sheet, header_row: int) -> dict[str, int | 
 
 def _value(sheet, row: int, col: int | None):
 	return sheet.cell(row, col).value if col else None
+
+
+def _number(value) -> float:
+	try:
+		return float(value or 0)
+	except (TypeError, ValueError):
+		return 0
+
+
+def _reporting_data(path: str) -> dict:
+	values = load_workbook(Path(path), data_only=True, read_only=False)
+	year = 2026
+	monthly = []
+	closings = []
+	daily_rows = []
+
+	summary = values["Summary Leads"]
+	for row in range(2, min(summary.max_row, 20) + 1):
+		month_number = MONTHS.get(_text(summary.cell(row, 1).value).upper())
+		if month_number not in REPORT_SHEETS.values():
+			continue
+		monthly.append(
+			{
+				"month": f"{year}-{month_number:02d}",
+				"leads": int(_number(summary.cell(row, 2).value)),
+				"meetings": int(_number(summary.cell(row, 3).value)),
+				"closed": int(_number(summary.cell(row, 4).value)),
+				"closed_amount": _number(summary.cell(row, 5).value),
+				"spend": _number(summary.cell(row, 7).value),
+			}
+		)
+
+	closing_month = None
+	for row in range(19, min(summary.max_row, 100) + 1):
+		month_number = MONTHS.get(_text(summary.cell(row, 1).value).upper())
+		if month_number:
+			closing_month = month_number
+		client = _text(summary.cell(row, 2).value)
+		amount_value = summary.cell(row, 3).value
+		if not closing_month or not client or not isinstance(amount_value, (int, float)):
+			continue
+		source = _text(summary.cell(row, 4).value)
+		source_month = next(
+			(f"{year}-{number:02d}" for label, number in MONTHS.items() if label in source.upper()),
+			None,
+		)
+		channel = "Website" if "WEBSITE" in source.upper() else "Founder Series" if "OPEN DAY" in source.upper() else "Meta"
+		closings.append(
+			{
+				"deal": f"xlsx-closing-{row}",
+				"client": client,
+				"amount": _number(amount_value),
+				"closed_on": date(year, closing_month, monthrange(year, closing_month)[1]).isoformat(),
+				"source_month": source_month,
+				"channel": channel,
+			}
+		)
+
+	for sheet_name, month_number in REPORT_SHEETS.items():
+		sheet = values[sheet_name]
+		header_row = next(
+			(row for row in range(1, min(sheet.max_row, 25) + 1) if _header(sheet.cell(row, 1).value) == "date"),
+			None,
+		)
+		if not header_row:
+			continue
+		headers = {cell.column: _header(cell.value) for cell in sheet[header_row] if _header(cell.value)}
+		lead_col = next((col for col, label in headers.items() if label == "total meta leads"), None)
+		meeting_col = next((col for col, label in headers.items() if label == "total meetings"), None)
+		spend_col = next((col for col, label in headers.items() if label == "meta ad spend"), None)
+		remark_col = next((col for col, label in headers.items() if label == "remark"), None)
+		awareness_col = next((col for col, label in headers.items() if label == "awareness"), None)
+		meta_leads = meta_meetings = 0
+		meta_spend = 0.0
+		for row in range(header_row + 2, sheet.max_row + 1):
+			report_date = _date(sheet.cell(row, 1).value)
+			if not report_date or report_date.year != year or report_date.month != month_number:
+				continue
+			reported_leads = int(_number(_value(sheet, row, lead_col)))
+			reported_meetings = int(_number(_value(sheet, row, meeting_col)))
+			lead_spend = _number(_value(sheet, row, spend_col))
+			meta_leads += reported_leads
+			meta_meetings += reported_meetings
+			meta_spend += lead_spend
+			daily_rows.append(
+				{
+					"date": report_date.date().isoformat(),
+					"channel": "Meta",
+					"reported_leads": reported_leads,
+					"reported_meetings": reported_meetings,
+					"monthly_adjustment": 0,
+					"lead_spend": lead_spend,
+					"awareness_spend": _number(_value(sheet, row, awareness_col)),
+					"remark": _text(_value(sheet, row, remark_col)) or None,
+				}
+			)
+
+		target = next((item for item in monthly if item["month"] == f"{year}-{month_number:02d}"), None)
+		if not target:
+			continue
+		remaining_leads = target["leads"] - meta_leads
+		remaining_meetings = target["meetings"] - meta_meetings
+		remaining_spend = target["spend"] - meta_spend
+		for row in range(6, min(header_row, 12)):
+			label = _text(sheet.cell(row, 1).value)
+			channel = {"TIKTOK": "TikTok", "GOOGLE": "Google", "FOUNDER SERIES": "Founder Series"}.get(label.upper())
+			if not channel:
+				continue
+			reported_leads = max(min(int(_number(sheet.cell(row, 2).value)), remaining_leads), 0)
+			reported_meetings = max(min(int(_number(sheet.cell(row, 9).value)), remaining_meetings), 0)
+			lead_spend = max(min(_number(sheet.cell(row, 12).value), remaining_spend), 0)
+			remaining_leads -= reported_leads
+			remaining_meetings -= reported_meetings
+			remaining_spend -= lead_spend
+			if not any((reported_leads, reported_meetings, lead_spend)):
+				continue
+			daily_rows.append(
+				{
+					"date": date(year, month_number, 1).isoformat(),
+					"channel": channel,
+					"reported_leads": reported_leads,
+					"reported_meetings": reported_meetings,
+					"monthly_adjustment": 1,
+					"lead_spend": lead_spend,
+					"awareness_spend": 0,
+					"remark": "Workbook monthly channel total",
+				}
+			)
+
+	return {"monthly": monthly, "closings": closings, "daily": daily_rows}
+
+
+def _import_reporting(path: str) -> dict:
+	reporting = _reporting_data(path)
+	settings = frappe.get_single("A-List Settings")
+	settings.historical_summary_json = json.dumps(reporting["monthly"], default=str)
+	settings.historical_closings_json = json.dumps(reporting["closings"], default=str)
+	settings.save(ignore_permissions=True)
+	created = updated = 0
+	for row in reporting["daily"]:
+		name = frappe.db.exists("A-List Daily Marketing", {"date": row["date"], "channel": row["channel"]})
+		if name:
+			doc = frappe.get_doc("A-List Daily Marketing", name)
+			updated += 1
+		else:
+			doc = frappe.new_doc("A-List Daily Marketing")
+			created += 1
+		for field, value in row.items():
+			doc.set(field, value)
+		doc.save(ignore_permissions=True)
+	return {
+		"monthly_snapshots": len(reporting["monthly"]),
+		"historical_closings": len(reporting["closings"]),
+		"daily_marketing_created": created,
+		"daily_marketing_updated": updated,
+	}
 
 
 def _lifecycle(raw_status: str) -> str:
@@ -401,8 +581,14 @@ def import_workbook(path: str) -> dict:
 				}
 			).insert(ignore_permissions=True)
 			activities_created += 1
+	reporting = _import_reporting(path)
 	frappe.db.commit()
-	return {"created_leads": created, "created_activities": activities_created, "skipped": skipped}
+	return {
+		"created_leads": created,
+		"created_activities": activities_created,
+		"skipped": skipped,
+		**reporting,
+	}
 
 
 def dry_run_json(path: str) -> str:

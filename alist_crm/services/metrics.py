@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from datetime import datetime
 
@@ -38,7 +39,16 @@ def daily_report(month: str | None = None) -> dict:
 	marketing = frappe.get_all(
 		"A-List Daily Marketing",
 		filters={"date": ["between", [start, end]]},
-		fields=["date", "channel", "lead_spend", "awareness_spend", "remark"],
+		fields=[
+			"date",
+			"channel",
+			"reported_leads",
+			"reported_meetings",
+			"monthly_adjustment",
+			"lead_spend",
+			"awareness_spend",
+			"remark",
+		],
 		order_by="date asc, channel asc",
 		limit_page_length=0,
 	)
@@ -46,13 +56,17 @@ def daily_report(month: str | None = None) -> dict:
 	days = defaultdict(lambda: {"leads": 0, "meetings": 0, "spend": 0, "awareness": 0, "remarks": []})
 	channels = defaultdict(lambda: {"leads": 0, "meetings": 0, "spend": 0, "awareness": 0})
 	owners = defaultdict(lambda: {"leads": 0, "meetings": 0})
+	has_reported_metrics = any(
+		row.reported_leads or row.reported_meetings or row.monthly_adjustment for row in marketing
+	)
 
 	for lead in leads:
 		day = getdate(lead.alist_lead_datetime).isoformat()
 		channel = lead.alist_channel or "Unassigned"
 		owner = lead.alist_pic_name or "Unassigned"
-		days[day]["leads"] += 1
-		channels[channel]["leads"] += 1
+		if not has_reported_metrics:
+			days[day]["leads"] += 1
+			channels[channel]["leads"] += 1
 		owners[owner]["leads"] += 1
 
 	for activity in activities:
@@ -60,8 +74,9 @@ def daily_report(month: str | None = None) -> dict:
 		lead = lead_map.get(activity.lead)
 		channel = (lead and lead.alist_channel) or "Unassigned"
 		owner = (lead and lead.alist_pic_name) or "Unassigned"
-		days[day]["meetings"] += 1
-		channels[channel]["meetings"] += 1
+		if not has_reported_metrics:
+			days[day]["meetings"] += 1
+			channels[channel]["meetings"] += 1
 		owners[owner]["meetings"] += 1
 
 	for row in marketing:
@@ -69,10 +84,17 @@ def daily_report(month: str | None = None) -> dict:
 		channel = row.channel or "Unassigned"
 		spend = flt(row.lead_spend)
 		awareness = flt(row.awareness_spend)
-		days[day]["spend"] += spend
-		days[day]["awareness"] += awareness
-		if row.remark:
-			days[day]["remarks"].append(row.remark)
+		if has_reported_metrics:
+			channels[channel]["leads"] += int(row.reported_leads or 0)
+			channels[channel]["meetings"] += int(row.reported_meetings or 0)
+			if not row.monthly_adjustment:
+				days[day]["leads"] += int(row.reported_leads or 0)
+				days[day]["meetings"] += int(row.reported_meetings or 0)
+		if not row.monthly_adjustment:
+			days[day]["spend"] += spend
+			days[day]["awareness"] += awareness
+			if row.remark:
+				days[day]["remarks"].append(row.remark)
 		channels[channel]["spend"] += spend
 		channels[channel]["awareness"] += awareness
 
@@ -81,8 +103,12 @@ def daily_report(month: str | None = None) -> dict:
 		metrics["cost_per_meeting"] = _safe_div(metrics["spend"], metrics["meetings"])
 
 	settings = frappe.get_single("A-List Settings")
-	total_leads = len(leads)
-	total_meetings = len(activities)
+	total_leads = (
+		sum(int(row.reported_leads or 0) for row in marketing) if has_reported_metrics else len(leads)
+	)
+	total_meetings = (
+		sum(int(row.reported_meetings or 0) for row in marketing) if has_reported_metrics else len(activities)
+	)
 	total_spend = sum(flt(row.lead_spend) for row in marketing)
 	total_awareness = sum(flt(row.awareness_spend) for row in marketing)
 	lead_target = int(settings.lead_target or 0)
@@ -199,6 +225,28 @@ def monthly_summary() -> dict:
 				"channel": lead.alist_channel if lead else None,
 			}
 		)
+
+	settings = frappe.get_single("A-List Settings")
+	try:
+		historical_months = json.loads(settings.historical_summary_json or "[]")
+		historical_closings = json.loads(settings.historical_closings_json or "[]")
+	except (TypeError, ValueError, json.JSONDecodeError):
+		historical_months = []
+		historical_closings = []
+	for snapshot in historical_months:
+		key = snapshot.get("month")
+		if not key:
+			continue
+		months[key].update(
+			{
+				"leads": int(snapshot.get("leads") or 0),
+				"meetings": int(snapshot.get("meetings") or 0),
+				"closed": int(snapshot.get("closed") or 0),
+				"closed_amount": flt(snapshot.get("closed_amount")),
+				"spend": flt(snapshot.get("spend")),
+			}
+		)
+	closings = historical_closings + closings
 
 	rows = []
 	for key, values in sorted(months.items()):

@@ -8,7 +8,9 @@
   "spend_target",
   "owner_colors",
   "channel_colors",
-  "assignment_pools"
+  "assignment_pools",
+  "historical_summary_json",
+  "historical_closings_json"
  ],
  "fields": [
   {
@@ -42,6 +44,20 @@
    "fieldtype": "Code",
    "label": "Assignment Pools",
    "options": "JSON"
+  },
+  {
+   "fieldname": "historical_summary_json",
+   "fieldtype": "Code",
+   "label": "Imported Historical Summary",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "historical_closings_json",
+   "fieldtype": "Code",
+   "label": "Imported Historical Closings",
+   "options": "JSON",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 0,

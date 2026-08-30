@@ -7,6 +7,9 @@
  "field_order": [
   "date",
   "channel",
+  "reported_leads",
+  "reported_meetings",
+  "monthly_adjustment",
   "lead_spend",
   "awareness_spend",
   "remark"
@@ -26,6 +29,26 @@
    "label": "Channel",
    "options": "Meta\nTikTok\nGoogle\nFounder Series\nBoss / Manual\nTalent\nPast Client\nWebsite",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "reported_leads",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Reported Leads"
+  },
+  {
+   "default": "0",
+   "fieldname": "reported_meetings",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Reported Meetings"
+  },
+  {
+   "default": "0",
+   "fieldname": "monthly_adjustment",
+   "fieldtype": "Check",
+   "label": "Monthly Channel Adjustment"
   },
   {
    "default": "0",
