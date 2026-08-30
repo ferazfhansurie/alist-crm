@@ -12,8 +12,6 @@ from openpyxl.utils import range_boundaries
 
 
 CANONICAL_SHEETS = [
-	"War Room Feb 26",
-	"War Room Mac 26",
 	"Leads Apr 26 FB",
 	"Leads Apr 26 TT",
 	"Leads May 26 FB",
@@ -41,7 +39,7 @@ OWNERS = {"TIKA": "Tika", "IZZY": "Izzy", "AIMAN": "Aiman", "FATIN": "Fatin", "F
 ALIASES = {
 	"lead_datetime": {"date time", "date & time", "date", "created time", "created_time", "start timing"},
 	"external_id": {"id", "lead id", "lead_id"},
-	"name": {"nama", "name", "full name", "nama penuh"},
+	"name": {"nama", "name", "full name", "nama penuh", "client"},
 	"phone": {"no tel", "no telefon", "phone", "phone number", "hp number", "contact number", "mobile no"},
 	"email": {"email", "email address"},
 	"company": {"company", "company name", "nama syarikat", "business name"},
@@ -349,6 +347,14 @@ def dry_run(path: str) -> dict:
 			)
 		)
 	unique_new = {key for key in keys if key not in existing}
+	seen_new = set()
+	new_activity_count = 0
+	for record in reversed(records):
+		key = record["lead"]["alist_import_key"]
+		if key not in unique_new or key in seen_new:
+			continue
+		seen_new.add(key)
+		new_activity_count += len(record["activities"])
 	report.update(
 		{
 			"rows_read": len(records),
@@ -357,7 +363,7 @@ def dry_run(path: str) -> dict:
 			"duplicate_keys": len(duplicate_keys),
 			"already_imported": len(existing),
 			"new_leads": len(unique_new),
-			"new_activities": sum(len(record["activities"]) for record in records if record["lead"]["alist_import_key"] in unique_new),
+			"new_activities": new_activity_count,
 			"by_channel": dict(Counter(record["lead"]["alist_channel"] for record in records)),
 			"by_status": dict(Counter(record["lead"]["status"] for record in records)),
 		}
@@ -371,7 +377,9 @@ def import_workbook(path: str) -> dict:
 	activities_created = 0
 	skipped = 0
 	seen = set()
-	for record in records:
+	# Duplicate contacts can reappear in a later monthly tab. Import the latest
+	# occurrence so the CRM starts with the workbook's current owner and status.
+	for record in reversed(records):
 		lead_data = record["lead"]
 		key = lead_data["alist_import_key"]
 		if key in seen or frappe.db.exists("CRM Lead", {"alist_import_key": key}):
@@ -397,4 +405,3 @@ def import_workbook(path: str) -> dict:
 
 def dry_run_json(path: str) -> str:
 	return json.dumps(dry_run(path), default=str, indent=2)
-
