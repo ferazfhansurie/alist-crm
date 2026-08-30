@@ -2,13 +2,12 @@ import {
   Box, Button, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerHeader,
   DrawerOverlay, Flex, HStack, IconButton, Text, VStack, useDisclosure
 } from '@chakra-ui/react';
-import { BarChart3, CalendarDays, Menu, Settings, Table2, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, Menu, Settings, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 
 const items = [
-  { href: '/crm/leads', label: 'Leads', icon: Users },
-  { path: '/leads', label: 'Sheet Audit', icon: Table2 },
+  { path: '/leads', label: 'Leads', icon: Users },
   { path: '/daily-report', label: 'Daily Report', icon: CalendarDays },
   { path: '/summary', label: 'Summary', icon: BarChart3 },
   { path: '/settings', label: 'Settings', icon: Settings, managerOnly: true }
@@ -25,7 +24,7 @@ export default function Navigation() {
     const Icon = item.icon;
     return (
       <Button
-        key={item.path || item.href}
+        key={item.path}
         leftIcon={<Icon size={16} />}
         variant="ghost"
         justifyContent={mobile ? 'flex-start' : 'center'}
@@ -37,11 +36,7 @@ export default function Navigation() {
         bg={active ? '#fff' : 'transparent'}
         fontWeight={active ? '700' : '500'}
         _hover={active ? {} : { color: '#e6e8ec', bg: 'whiteAlpha.100' }}
-        onClick={() => {
-          if (item.href) window.location.assign(item.href);
-          else navigate(item.path);
-          drawer.onClose();
-        }}
+        onClick={() => { navigate(item.path); drawer.onClose(); }}
       >
         {item.label}
       </Button>
@@ -52,7 +47,7 @@ export default function Navigation() {
     <Box position="sticky" top={0} zIndex={100} bg="#15181d">
       <Flex h="74px" px={{ base: 4, lg: '30px' }} align="center">
         <Flex flex={1} align="center">
-          <Text color="white" fontSize="20px" fontWeight="700" letterSpacing="-.01em" cursor="pointer" onClick={() => window.location.assign('/crm')}>
+          <Text color="white" fontSize="20px" fontWeight="700" letterSpacing="-.01em" cursor="pointer" onClick={() => navigate('/leads')}>
             THE<Box as="span" color="#e8384f">A</Box>-LIST
           </Text>
         </Flex>

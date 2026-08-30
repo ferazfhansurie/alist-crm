@@ -16,6 +16,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/leads" replace />} />
         <Route path="/leads" element={<LeadsPage />} />
+        <Route path="/leads/:leadId" element={<LeadsPage />} />
         <Route path="/daily-report" element={<DailyReportPage />} />
         <Route path="/summary" element={<SummaryPage />} />
         <Route path="/settings" element={<SettingsPage />} />

@@ -1,7 +1,8 @@
 import json
+from html import escape
 
 import frappe
-from frappe.utils import add_days, cint, flt, today
+from frappe.utils import add_days, cint, flt, now_datetime, today
 
 from alist_crm.schema import CHANNEL_COLORS, OWNER_COLORS
 from alist_crm.services import lead_workflow, metrics
@@ -104,6 +105,7 @@ LEAD_FIELDS = [
 	"status",
 	"lead_owner",
 	"source",
+	"creation",
 	"modified",
 	"alist_lead_datetime",
 	"alist_channel",
@@ -111,13 +113,19 @@ LEAD_FIELDS = [
 	"alist_annual_sales_band",
 	"alist_monthly_sales_text",
 	"alist_monthly_sales_value",
+	"alist_business_type",
+	"alist_service_required",
 	"alist_pic_name",
 	"alist_last_outcome",
 	"alist_event_outcome",
 	"alist_next_follow_up",
 	"alist_remark",
 	"alist_ad_name",
+	"alist_adset_name",
 	"alist_campaign_name",
+	"alist_form_name",
+	"alist_original_status",
+	"alist_source_tab",
 	"alist_linked_deal",
 ]
 
@@ -125,16 +133,22 @@ EDITABLE_FIELDS = {
 	"alist_annual_sales_band",
 	"alist_monthly_sales_text",
 	"alist_monthly_sales_value",
+	"alist_business_type",
+	"alist_service_required",
+	"alist_channel",
+	"alist_last_outcome",
 	"alist_next_follow_up",
 	"alist_remark",
+	"alist_event_outcome",
 	"organization",
 	"email",
 	"mobile_no",
+	"source",
 }
 
 
 @frappe.whitelist()
-def list_leads(filters=None, search=None, start=0, page_length=100, order_by="alist_lead_datetime desc"):
+def list_leads(filters=None, search=None, start=0, page_length=50, order_by="alist_lead_datetime desc"):
 	if not frappe.has_permission("CRM Lead", "read"):
 		frappe.throw("Not permitted", frappe.PermissionError)
 	filters = frappe.parse_json(filters) if filters else {}
@@ -172,8 +186,52 @@ def list_leads(filters=None, search=None, start=0, page_length=100, order_by="al
 		page_length=min(max(cint(page_length), 1), 250),
 		order_by=order_by,
 	)
-	count = frappe.db.count("CRM Lead", filters=db_filters)
+	count_rows = frappe.get_list(
+		"CRM Lead",
+		filters=db_filters,
+		or_filters=or_filters,
+		fields=["count(name) as count"],
+		page_length=1,
+	)
+	count = cint(count_rows[0].count) if count_rows else 0
 	return {"rows": rows, "count": count}
+
+
+@frappe.whitelist()
+def lead_overview():
+	if not frappe.has_permission("CRM Lead", "read"):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	status_counts = {
+		row.status: cint(row.count)
+		for row in frappe.get_list(
+			"CRM Lead",
+			fields=["status", "count(name) as count"],
+			group_by="status",
+			page_length=100,
+		)
+	}
+	owner_counts = {
+		(row.alist_pic_name or "Unassigned"): cint(row.count)
+		for row in frappe.get_list(
+			"CRM Lead",
+			fields=["alist_pic_name", "count(name) as count"],
+			group_by="alist_pic_name",
+			page_length=100,
+		)
+	}
+	overdue = frappe.db.count(
+		"CRM Lead",
+		filters={
+			"alist_next_follow_up": ["<", now_datetime()],
+			"status": ["not in", ["Converted", "Disqualified", "Duplicate"]],
+		},
+	)
+	return {
+		"total": sum(status_counts.values()),
+		"status_counts": status_counts,
+		"owner_counts": owner_counts,
+		"overdue": overdue,
+	}
 
 
 @frappe.whitelist()
@@ -181,23 +239,99 @@ def lead_detail(name: str):
 	if not frappe.has_permission("CRM Lead", "read", name):
 		frappe.throw("Not permitted", frappe.PermissionError)
 	doc = frappe.get_doc("CRM Lead", name).as_dict()
-	activities = frappe.get_list(
-		"A-List Lead Activity",
-		filters={"lead": name},
-		fields=[
-			"name",
-			"activity_type",
-			"outcome",
-			"occurred_at",
-			"scheduled_for",
-			"actor",
-			"note",
-			"source_label",
-		],
-		order_by="occurred_at desc",
-		limit_page_length=200,
-	)
-	return {"lead": doc, "activities": activities}
+	from alist_crm.overrides.activities import get_activities
+
+	timeline, calls, notes, tasks, attachments = get_activities(name)
+	deal = None
+	if doc.get("alist_linked_deal") and frappe.db.exists("CRM Deal", doc.alist_linked_deal):
+		deal = frappe.get_value(
+			"CRM Deal",
+			doc.alist_linked_deal,
+			[
+				"name",
+				"status",
+				"organization",
+				"alist_proposal_value",
+				"alist_confirmed_value",
+				"alist_next_follow_up",
+			],
+			as_dict=True,
+		)
+	return {
+		"lead": doc,
+		"timeline": timeline,
+		"calls": calls,
+		"notes": notes,
+		"tasks": tasks,
+		"attachments": attachments,
+		"deal": deal,
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def create_lead(values=None):
+	if not frappe.has_permission("CRM Lead", "create"):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	values = frappe.parse_json(values) if values else {}
+	allowed = {
+		"first_name",
+		"organization",
+		"email",
+		"mobile_no",
+		"source",
+		"alist_channel",
+		"alist_pic_name",
+		"alist_annual_sales_band",
+		"alist_monthly_sales_text",
+		"alist_business_type",
+		"alist_service_required",
+		"alist_next_follow_up",
+		"alist_remark",
+	}
+	payload = {key: value for key, value in values.items() if key in allowed and value not in (None, "")}
+	if not (payload.get("first_name") or payload.get("organization")):
+		frappe.throw("Add a lead name or organization")
+	payload.setdefault("first_name", payload.get("organization"))
+	payload.setdefault("status", "New")
+	payload.setdefault("alist_lead_datetime", now_datetime())
+	doc = frappe.get_doc({"doctype": "CRM Lead", **payload}).insert()
+	return {"name": doc.name, "lead_name": doc.lead_name}
+
+
+@frappe.whitelist(methods=["POST"])
+def update_lead_details(name: str, values=None, modified=None):
+	if not frappe.has_permission("CRM Lead", "write", name):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	values = frappe.parse_json(values) if values else {}
+	values = {key: value for key, value in values.items() if key in EDITABLE_FIELDS}
+	if not values:
+		frappe.throw("No editable fields supplied")
+	doc = frappe.get_doc("CRM Lead", name)
+	if modified and str(doc.modified) != str(modified):
+		frappe.throw("This lead changed elsewhere. Refresh before saving.", frappe.TimestampMismatchError)
+	for field, value in values.items():
+		doc.set(field, value)
+	doc.save()
+	return {"name": doc.name, "modified": doc.modified, "values": values}
+
+
+@frappe.whitelist(methods=["POST"])
+def add_lead_comment(name: str, content: str):
+	if not frappe.has_permission("CRM Lead", "write", name):
+		frappe.throw("Not permitted", frappe.PermissionError)
+	content = (content or "").strip()
+	if not content:
+		frappe.throw("Write a comment first")
+	comment = frappe.get_doc(
+		{
+			"doctype": "Comment",
+			"comment_type": "Comment",
+			"reference_doctype": "CRM Lead",
+			"reference_name": name,
+			"content": "<p>" + escape(content).replace("\n", "<br>") + "</p>",
+		}
+	).insert()
+	return {"name": comment.name, "creation": comment.creation}
 
 
 @frappe.whitelist(methods=["POST"])
