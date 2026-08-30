@@ -239,7 +239,7 @@ def _reporting_data(path: str) -> dict:
 	daily_rows = []
 
 	summary = values["Summary Leads"]
-	for row in range(2, min(summary.max_row, 20) + 1):
+	for row in range(2, min(summary.max_row, 14) + 1):
 		month_number = MONTHS.get(_text(summary.cell(row, 1).value).upper())
 		if month_number not in REPORT_SHEETS.values():
 			continue
@@ -296,7 +296,9 @@ def _reporting_data(path: str) -> dict:
 		awareness_col = next((col for col, label in headers.items() if label == "awareness"), None)
 		meta_leads = meta_meetings = 0
 		meta_spend = 0.0
-		for row in range(header_row + 2, sheet.max_row + 1):
+		first_data_row = header_row + 2
+		last_data_row = first_data_row + monthrange(year, month_number)[1]
+		for row in range(first_data_row, last_data_row):
 			report_date = _date(sheet.cell(row, 1).value)
 			if not report_date or report_date.year != year or report_date.month != month_number:
 				continue
