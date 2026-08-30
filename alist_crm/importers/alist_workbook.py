@@ -103,11 +103,13 @@ def _phone(value) -> str:
 	if not text:
 		return ""
 	digits = re.sub(r"\D", "", text)
+	if len(digits) < 7 or len(digits) > 15:
+		return ""
 	if digits.startswith("60"):
 		return f"+{digits}"
 	if digits.startswith("0"):
 		return f"+60{digits[1:]}"
-	return f"+60{digits}" if 8 <= len(digits) <= 11 else text
+	return f"+60{digits}" if 8 <= len(digits) <= 11 else f"+{digits}"
 
 
 def _email(value) -> str:
@@ -268,7 +270,8 @@ def read_workbook(path: str) -> tuple[list[dict], dict]:
 
 		for row in range(header_row + 1, value_sheet.max_row + 1):
 			name = _text(_value(value_sheet, row, columns["name"]))
-			phone = _phone(_value(value_sheet, row, columns["phone"]))
+			raw_phone = _text(_value(value_sheet, row, columns["phone"]))
+			phone = _phone(raw_phone)
 			email = _email(_value(value_sheet, row, columns["email"]))
 			company = _text(_value(value_sheet, row, columns["company"]))
 			if not any((name, phone, email, company)):
@@ -279,6 +282,9 @@ def read_workbook(path: str) -> tuple[list[dict], dict]:
 			owner = OWNERS.get(owner_raw, owner_raw.title() if owner_raw else None)
 			raw_status = _text(_value(value_sheet, row, columns["status"]))
 			key = _import_key(channel, external_id, email, phone, lead_date, sheet_name, row)
+			remark = _text(_value(value_sheet, row, columns["remark"]))
+			if raw_phone and not phone:
+				remark = " · ".join(filter(None, [remark, f"Original contact: {raw_phone}"]))
 			records.append(
 				{
 					"lead": {
@@ -299,7 +305,7 @@ def read_workbook(path: str) -> tuple[list[dict], dict]:
 						"alist_pic_name": owner,
 						"alist_last_outcome": _last_outcome(raw_status),
 						"alist_event_outcome": "Confirmed" if "CONFIRMED" in raw_status.upper() else "Declined" if "DECLINE" in raw_status.upper() else None,
-						"alist_remark": _text(_value(value_sheet, row, columns["remark"])) or None,
+						"alist_remark": remark or None,
 						"alist_original_status": raw_status or None,
 						"alist_external_lead_id": external_id or None,
 						"alist_ad_id": _text(_value(value_sheet, row, columns["ad_id"])) or None,
