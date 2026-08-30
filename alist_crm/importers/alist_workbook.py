@@ -274,7 +274,7 @@ def read_workbook(path: str) -> tuple[list[dict], dict]:
 			phone = _phone(raw_phone)
 			email = _email(_value(value_sheet, row, columns["email"]))
 			company = _text(_value(value_sheet, row, columns["company"]))
-			if not any((name, phone, email, company)):
+			if not any((name, raw_phone, email, company)):
 				continue
 			lead_date = _date(_value(value_sheet, row, columns["lead_datetime"]))
 			external_id = _text(_value(value_sheet, row, columns["external_id"]))
@@ -288,7 +288,7 @@ def read_workbook(path: str) -> tuple[list[dict], dict]:
 			records.append(
 				{
 					"lead": {
-						"first_name": name or company or phone or email or f"Lead {row}",
+						"first_name": name or company or phone or email or raw_phone or f"Lead {row}",
 						"email": email or None,
 						"mobile_no": phone or None,
 						"organization": company or None,
