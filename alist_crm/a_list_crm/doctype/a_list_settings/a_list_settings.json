@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "creation": "2026-08-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "lead_target",
+  "spend_target",
+  "owner_colors",
+  "channel_colors",
+  "assignment_pools"
+ ],
+ "fields": [
+  {
+   "default": "1200",
+   "fieldname": "lead_target",
+   "fieldtype": "Int",
+   "label": "Monthly Lead Target",
+   "reqd": 1
+  },
+  {
+   "default": "7000",
+   "fieldname": "spend_target",
+   "fieldtype": "Currency",
+   "label": "Monthly Spend Target",
+   "reqd": 1
+  },
+  {
+   "fieldname": "owner_colors",
+   "fieldtype": "Code",
+   "label": "Owner Colours",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "channel_colors",
+   "fieldtype": "Code",
+   "label": "Channel Colours",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "assignment_pools",
+   "fieldtype": "Code",
+   "label": "Assignment Pools",
+   "options": "JSON"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "A-List CRM",
+ "name": "A-List Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "Sales User"
+  },
+  {
+   "read": 1,
+   "role": "Sales Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ]
+}

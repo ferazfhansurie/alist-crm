@@ -1,0 +1,14 @@
+html, body, #root { min-height: 100%; margin: 0; }
+body { background: #fafafa; font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; }
+* { box-sizing: border-box; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #e8384f; border-radius: 8px; }
+.lead-grid { border-collapse: separate; border-spacing: 0; }
+.lead-grid th { position: sticky; top: 0; z-index: 2; background: #f9fafb; }
+.lead-grid tbody tr:hover { background: #f9fafb; }
+.money-band-low { background: #fff; }
+.money-band-mid-low { background: #fce5cd; }
+.money-band-mid { background: #f9cb9c; }
+.money-band-high { background: #f6b26b; }
+.money-band-top { background: #ff9900; }

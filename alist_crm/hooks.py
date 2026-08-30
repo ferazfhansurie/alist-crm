@@ -9,6 +9,26 @@ required_apps = ["crm"]
 after_install = "alist_crm.setup.run"
 after_migrate = "alist_crm.setup.run"
 
+add_to_apps_screen = [
+	{
+		"name": "alist",
+		"logo": "/assets/alist_crm/images/alist-logo.png",
+		"title": "A-List CRM",
+		"route": "/alist",
+		"has_permission": "alist_crm.api.has_app_permission",
+	}
+]
+
+website_route_rules = [
+	{"from_route": "/alist/<path:app_path>", "to_route": "alist"},
+]
+
+doc_events = {
+	"CRM Lead": {
+		"before_insert": "alist_crm.services.assignment.assign_if_needed",
+	},
+}
+
 # Apps
 # ------------------
 

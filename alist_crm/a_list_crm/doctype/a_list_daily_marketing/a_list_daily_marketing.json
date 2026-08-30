@@ -1,0 +1,83 @@
+{
+ "actions": [],
+ "autoname": "format:{date}-{channel}",
+ "creation": "2026-08-30 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "channel",
+  "lead_spend",
+  "awareness_spend",
+  "remark"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Channel",
+   "options": "Meta\nTikTok\nGoogle\nFounder Series\nBoss / Manual\nTalent\nPast Client\nWebsite",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "lead_spend",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Lead-generation Spend"
+  },
+  {
+   "default": "0",
+   "fieldname": "awareness_spend",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Awareness Spend"
+  },
+  {
+   "fieldname": "remark",
+   "fieldtype": "Small Text",
+   "label": "Daily Remark"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-08-30 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "A-List CRM",
+ "name": "A-List Daily Marketing",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "Sales User"
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "date",
+ "sort_order": "DESC"
+}

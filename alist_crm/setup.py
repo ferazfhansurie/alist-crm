@@ -1,7 +1,7 @@
 import frappe
 
+from alist_crm.schema import LEAD_FIELDS, LEAD_STATUSES, MODULE, default_settings
 
-MODULE = "A-List CRM"
 
 DEAL_STAGES = [
 	("New", "Open", 5, "gray", 1),
@@ -111,21 +111,28 @@ def _ensure_deal_stages():
 				frappe.delete_doc("CRM Deal Status", name, force=True, ignore_permissions=True)
 
 
-def _ensure_custom_fields():
+def _ensure_lead_statuses():
+	for name, color, position in LEAD_STATUSES:
+		if frappe.db.exists("CRM Lead Status", name):
+			doc = frappe.get_doc("CRM Lead Status", name)
+		else:
+			doc = frappe.new_doc("CRM Lead Status")
+			doc.lead_status = name
+		doc.color = color
+		doc.position = position
+		doc.save(ignore_permissions=True)
+
+
+def _ensure_fields(doctype, fields, insert_after):
 	created = 0
-	for field in DEAL_FIELDS:
-		if frappe.db.exists("Custom Field", {"dt": "CRM Deal", "fieldname": field["fieldname"]}):
+	for field in fields:
+		if frappe.db.exists("Custom Field", {"dt": doctype, "fieldname": field["fieldname"]}):
 			continue
 		definition = {
 			"doctype": "Custom Field",
-			"dt": "CRM Deal",
-			"insert_after": "status",
+			"dt": doctype,
+			"insert_after": insert_after,
 			"module": MODULE,
-			"in_list_view": 1 if field["fieldname"] in {
-				"alist_proposal_status",
-				"alist_proposal_value",
-				"alist_next_follow_up",
-			} else 0,
 			**field,
 		}
 		frappe.get_doc(definition).insert(ignore_permissions=True)
@@ -133,15 +140,33 @@ def _ensure_custom_fields():
 	return created
 
 
+def _ensure_settings():
+	if not frappe.db.exists("DocType", "A-List Settings"):
+		return
+	settings = frappe.get_single("A-List Settings")
+	changed = False
+	for fieldname, value in default_settings().items():
+		if not settings.get(fieldname):
+			settings.set(fieldname, value)
+			changed = True
+	if changed:
+		settings.save(ignore_permissions=True)
+
+
 def run():
 	_ensure_branding()
 	_ensure_deal_stages()
-	created = _ensure_custom_fields()
+	_ensure_lead_statuses()
+	deal_created = _ensure_fields("CRM Deal", DEAL_FIELDS, "status")
+	lead_created = _ensure_fields("CRM Lead", LEAD_FIELDS, "source")
+	_ensure_settings()
 	frappe.db.commit()
 	return {
 		"brand": "A-List Malaysia",
 		"stages": [stage[0] for stage in DEAL_STAGES],
-		"custom_fields_created": created,
+		"lead_statuses": [status[0] for status in LEAD_STATUSES],
+		"deal_fields_created": deal_created,
+		"lead_fields_created": lead_created,
 	}
 
 
@@ -158,7 +183,6 @@ def audit():
 			fields=["name", "type", "probability", "position"],
 			order_by="position asc",
 		),
-		"custom_field_count": frappe.db.count(
-			"Custom Field", {"dt": "CRM Deal", "module": MODULE}
-		),
+		"deal_custom_field_count": frappe.db.count("Custom Field", {"dt": "CRM Deal", "module": MODULE}),
+		"lead_custom_field_count": frappe.db.count("Custom Field", {"dt": "CRM Lead", "module": MODULE}),
 	}
