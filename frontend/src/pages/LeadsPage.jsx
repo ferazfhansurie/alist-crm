@@ -1,19 +1,20 @@
 import {
-  Box, Button, Flex, Grid, HStack, IconButton, Input, InputGroup, InputLeftElement,
+  Box, Button, Flex, HStack, IconButton, Input, InputGroup, InputLeftElement,
   Menu, MenuButton, MenuDivider, MenuGroup, MenuItem, MenuList, Modal, ModalBody,
   ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Select,
   Spinner, Text, Textarea, Tooltip, useToast
 } from '@chakra-ui/react';
 import {
-  Bookmark, ChevronDown, ChevronLeft, ChevronRight, Plus, RefreshCw, Search, X
+  Bookmark, ChevronDown, ChevronLeft, ChevronRight, Columns, Download, Plus,
+  RefreshCw, Rows, Search, X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import PageHeader from '../components/PageHeader';
 import CreateLeadModal from '../components/leads/CreateLeadModal';
 import FunnelStrip from '../components/leads/FunnelStrip';
-import LeadDetail from '../components/leads/LeadDetail';
 import LeadTable from '../components/leads/LeadTable';
-import { ACTION_GROUPS, CHANNELS, STATUSES } from '../components/leads/actions';
+import { ACTION_GROUPS, CHANNELS } from '../components/leads/actions';
 import { ErrorBanner } from '../components/ui';
 import { useApp } from '../contexts/AppContext';
 import { api } from '../services/frappeApi';
@@ -144,7 +145,6 @@ function BulkBar({ count, owners, onAssign, onAction, onClear, busy }) {
 }
 
 export default function LeadsPage() {
-  const { leadId } = useParams();
   const navigate = useNavigate();
   const { settings } = useApp();
   const toast = useToast();
@@ -164,6 +164,8 @@ export default function LeadsPage() {
   const [selection, setSelection] = useState(() => new Set());
   const [actionTarget, setActionTarget] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [density, setDensity] = useState('compact');
+  const [visibleColumns, setVisibleColumns] = useState({ qualification: true, outcome: true, followup: true });
 
   const owners = Object.keys(settings?.owner_colors || {});
 
@@ -307,32 +309,34 @@ export default function LeadsPage() {
     return `${start}–${end} of ${data.count.toLocaleString()}`;
   }, [data.count, page]);
 
-  return (
-    <Box h={{ base: 'auto', lg: '100vh' }} minH={{ base: 'calc(100vh - 56px)', lg: '100vh' }} overflow="hidden" display="flex" flexDirection="column">
-      <Box px={{ base: 4, xl: 7 }} pt={{ base: 4, xl: 5 }} pb={4}>
-        <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={4} mb={4}>
-          <Box>
-            <HStack spacing={2.5} align="baseline">
-              <Text fontFamily="display" fontSize="24px" fontWeight="600" letterSpacing="-.01em">Leads</Text>
-              <Text className="num" fontSize="13px" fontWeight="650" color={tokens.muted}>
-                {overview.total ? overview.total.toLocaleString() : '—'} total
-              </Text>
-            </HStack>
-          </Box>
-          <HStack spacing={2}>
-            <Tooltip label="Refresh">
-              <IconButton aria-label="Refresh" icon={<RefreshCw size={15} />} variant="quiet" onClick={refresh} isLoading={loading && data.rows.length > 0} />
-            </Tooltip>
-            <Button leftIcon={<Plus size={16} />} variant="signal" onClick={() => setCreateOpen(true)}>
-              Create lead
-            </Button>
-          </HStack>
-        </Flex>
-        <FunnelStrip overview={overview} activeStatus={filters.status} onStatus={setFilter('status')} />
-      </Box>
+  const exportCsv = () => {
+    const columns = ['Lead', 'Organization', 'Status', 'PIC', 'Channel', 'Phone', 'Email', 'Qualification', 'Latest outcome', 'Next follow-up'];
+    const value = (input) => `"${String(input || '').replaceAll('"', '""')}"`;
+    const lines = [columns.map(value).join(','), ...data.rows.map((lead) => [
+      lead.lead_name || lead.first_name, lead.organization, lead.status, lead.alist_pic_name,
+      lead.alist_channel || lead.source, lead.mobile_no, lead.email, lead.alist_annual_sales_band,
+      lead.alist_last_outcome, lead.alist_next_follow_up
+    ].map(value).join(','))];
+    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url; anchor.download = `a-list-leads-${new Date().toISOString().slice(0, 10)}.csv`; anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
-      <Grid flex={1} minH={0} templateColumns={{ base: 'minmax(0, 1fr)', xl: leadId ? 'minmax(640px, 1fr) 580px' : 'minmax(0, 1fr)' }}>
-        <Flex minW={0} minH={0} direction="column" px={{ base: 4, xl: 7 }} pb={4} position="relative">
+  const toggleColumn = (key) => setVisibleColumns((current) => ({ ...current, [key]: !current[key] }));
+
+  return (
+    <Box h={{ base: 'auto', lg: '100vh' }} minH={{ base: 'calc(100vh - 56px)', lg: '100vh' }} overflow="hidden" display="flex" flexDirection="column" px={{ base: 4, xl: 7 }} py={{ base: 4, xl: 6 }}>
+      <PageHeader
+        kicker="KOL database"
+        title="Leads, in the KOL database system"
+        description={`${Number(overview.total || 0).toLocaleString()} total · ${Number(overview.overdue || overview.overdue_count || 0).toLocaleString()} overdue · ${Number((overview.status_counts?.Disqualified || 0) + (overview.status_counts?.Duplicate || 0)).toLocaleString()} out of funnel`}
+        actions={<HStack spacing={2}><Button leftIcon={<RefreshCw size={15} />} variant="quiet" onClick={refresh} isLoading={loading && data.rows.length > 0}>Refresh</Button><Button leftIcon={<Download size={15} />} variant="quiet" onClick={exportCsv}>Export CSV</Button><Button leftIcon={<Plus size={16} />} variant="signal" onClick={() => setCreateOpen(true)}>Create lead</Button></HStack>}
+      />
+
+      <Box mb={5}><FunnelStrip overview={overview} activeStatus={filters.status} onStatus={setFilter('status')} /></Box>
+
+      <Flex flex={1} minH={0} minW={0} direction="column" position="relative">
           <Flex gap={2} mb={2.5} align="center" flexWrap="wrap">
             <HStack spacing={1.5} flexWrap="wrap">
               <Button
@@ -369,7 +373,7 @@ export default function LeadsPage() {
             </HStack>
           </Flex>
 
-          <Flex gap={2} mb={3} align="center" flexWrap={{ base: 'wrap', xl: 'nowrap' }}>
+          <Flex gap={2} mb={3} p={3} align="center" flexWrap={{ base: 'wrap', xl: 'nowrap' }} bg="white" border="1px solid" borderColor={tokens.borderSoft} borderRadius="12px" boxShadow="0 1px 2px rgba(21,24,29,.04)">
             <InputGroup maxW={{ base: '100%', xl: '330px' }} size="sm">
               <InputLeftElement pointerEvents="none"><Search size={14} color={tokens.faint} /></InputLeftElement>
               <Input
@@ -380,10 +384,6 @@ export default function LeadsPage() {
                 bg="white"
               />
             </InputGroup>
-            <Select size="sm" bg="white" value={filters.status} onChange={(event) => setFilter('status')(event.target.value)} w={{ base: 'calc(50% - 4px)', xl: '140px' }}>
-              <option value="">All statuses</option>
-              {STATUSES.map((status) => <option key={status}>{status}</option>)}
-            </Select>
             <Select size="sm" bg="white" value={filters.alist_channel} onChange={(event) => setFilter('alist_channel')(event.target.value)} w={{ base: 'calc(50% - 4px)', xl: '145px' }}>
               <option value="">All channels</option>
               {CHANNELS.map((channel) => <option key={channel}>{channel}</option>)}
@@ -399,6 +399,11 @@ export default function LeadsPage() {
               <option value="modified desc">Recently updated</option>
               <option value="lead_name asc">Name A–Z</option>
             </Select>
+            <Menu closeOnSelect={false}>
+              <MenuButton as={Button} size="sm" variant="quiet" leftIcon={<Columns size={14} />} rightIcon={<ChevronDown size={12} />}>Columns</MenuButton>
+              <MenuList><MenuGroup title="Visible columns">{Object.entries(visibleColumns).map(([key, shown]) => <MenuItem key={key} onClick={() => toggleColumn(key)}>{shown ? '✓ ' : ''}{key.charAt(0).toUpperCase() + key.slice(1)}</MenuItem>)}</MenuGroup></MenuList>
+            </Menu>
+            <Button size="sm" variant="quiet" leftIcon={<Rows size={14} />} onClick={() => setDensity((value) => value === 'compact' ? 'comfortable' : 'compact')}>{density === 'compact' ? 'Compact' : 'Comfortable'}</Button>
           </Flex>
 
           {error && <Box mb={3}><ErrorBanner message={error} onRetry={load} /></Box>}
@@ -412,12 +417,13 @@ export default function LeadsPage() {
               <LeadTable
                 rows={data.rows}
                 loading={loading}
-                selectedName={leadId}
                 onOpen={(name) => navigate(`/leads/${encodeURIComponent(name)}`)}
                 onAction={runAction}
                 selection={selection}
                 onToggleRow={toggleRow}
                 onToggleAll={toggleAll}
+                density={density}
+                visibleColumns={visibleColumns}
               />
             )}
             <BulkBar
@@ -438,16 +444,7 @@ export default function LeadsPage() {
               <IconButton size="sm" aria-label="Next page" icon={<ChevronRight size={15} />} variant="quiet" isDisabled={page >= totalPages} onClick={() => setPage((value) => value + 1)} />
             </HStack>
           </Flex>
-        </Flex>
-
-        {leadId && (
-          <LeadDetail
-            name={leadId}
-            onClose={() => navigate('/leads')}
-            onChanged={refresh}
-          />
-        )}
-      </Grid>
+      </Flex>
 
       <CreateLeadModal
         isOpen={createOpen}

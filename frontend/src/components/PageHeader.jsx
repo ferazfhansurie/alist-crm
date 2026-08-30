@@ -4,14 +4,24 @@ import { tokens } from '../theme';
 export default function PageHeader({ kicker, title, description, actions }) {
   return (
     <Flex
+      position="relative"
+      overflow="hidden"
       justify="space-between"
-      align={{ base: 'start', md: 'end' }}
+      align={{ base: 'start', md: 'center' }}
       gap={4}
       direction={{ base: 'column', md: 'row' }}
-      pb={5}
+      px={{ base: 5, xl: 7 }}
+      py={{ base: 5, xl: 6 }}
       mb={6}
-      borderBottom="1px solid"
-      borderColor={tokens.border}
+      bg="white"
+      border="1px solid"
+      borderColor={tokens.borderSoft}
+      borderRadius="14px"
+      boxShadow="lift"
+      _before={{
+        content: '""', position: 'absolute', inset: '0 auto 0 0', w: '5px',
+        bg: `linear-gradient(180deg, ${tokens.red} 0%, ${tokens.ink} 100%)`
+      }}
     >
       <Box>
         {kicker && (
@@ -19,7 +29,7 @@ export default function PageHeader({ kicker, title, description, actions }) {
             {kicker}
           </Text>
         )}
-        <Heading fontFamily="display" fontSize="27px" fontWeight="600" letterSpacing="-.01em" color={tokens.ink}>
+        <Heading fontFamily="display" fontSize={{ base: '26px', xl: '32px' }} fontWeight="700" letterSpacing="-.025em" color={tokens.ink}>
           {title}
         </Heading>
         {description && <Text mt={1.5} color={tokens.muted} fontSize="13.5px" maxW="620px">{description}</Text>}

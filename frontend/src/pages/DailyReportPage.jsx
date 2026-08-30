@@ -5,6 +5,7 @@ import {
 import { CalendarDays, ChevronDown, ChevronUp, PenLine } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
+import { ChartCard, DailyLeadsCplChart, DonutBreakdown, PaceToTargetChart } from '../components/reports/ReportCharts';
 import { ErrorBanner, SectionLabel, Surface, money, percent } from '../components/ui';
 import { useApp } from '../contexts/AppContext';
 import { api } from '../services/frappeApi';
@@ -218,7 +219,15 @@ export default function DailyReportPage() {
             </Flex>
           </Surface>
 
-          <SimpleGrid columns={{ base: 1, xl: 2 }} spacing={5} mb={5}>
+          <ChartCard title="Pace to target" meta={`Cumulative leads against the ${Number(totals.lead_target || 0).toLocaleString()} monthly target`} mb={5}>
+            <PaceToTargetChart days={days} target={totals.lead_target} />
+          </ChartCard>
+
+          <ChartCard title="Leads and cost per lead by day" meta={`${days.length} active days · CPL on the dashed line`} mb={5}>
+            <DailyLeadsCplChart days={days} />
+          </ChartCard>
+
+          <Grid templateColumns={{ base: '1fr', xl: 'minmax(0, 2fr) minmax(310px, 1fr)' }} gap={5} mb={5}>
             <TableShell title="Channel performance" right={<Text className="num" fontSize="11.5px" color={tokens.muted}>{money(totalChannelSpend, true)} spend</Text>}>
               <table className="report-table">
                 <thead>
@@ -247,7 +256,12 @@ export default function DailyReportPage() {
               </table>
             </TableShell>
 
-            <TableShell title="Per PIC">
+            <ChartCard title="Channel mix" meta={`${channels.length} active channels`}>
+              <DonutBreakdown items={channels} valueKey="leads" labelKey="channel" centerLabel="Leads" />
+            </ChartCard>
+          </Grid>
+
+          <TableShell title="Per PIC" right={<Text className="num" fontSize="11.5px" color={tokens.muted}>{owners.length} people</Text>}>
               <table className="report-table">
                 <thead>
                   <tr><th>PIC</th><th>Leads</th><th>Meetings</th><th>Lead → meeting</th></tr>
@@ -271,8 +285,9 @@ export default function DailyReportPage() {
                   ))}
                 </tbody>
               </table>
-            </TableShell>
-          </SimpleGrid>
+          </TableShell>
+
+          <Box h={5} />
 
           <TableShell
             title="Daily breakdown"

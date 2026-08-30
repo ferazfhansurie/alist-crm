@@ -1,22 +1,22 @@
 import { extendTheme } from '@chakra-ui/react';
 
 /**
- * A-List "Marque" design tokens.
- * Warm paper canvas, ink structure, a-list red reserved for signal moments.
+ * A-List Claude Design handoff tokens.
+ * Cool operational canvas, ink structure, a-list red reserved for signal moments.
  */
 export const tokens = {
-  canvas: '#f6f5f1',
+  canvas: '#F4F6FA',
   surface: '#ffffff',
-  surfaceTint: '#fbfaf7',
+  surfaceTint: '#F7F9FC',
   rail: '#141519',
   railSoft: '#1d1f25',
   ink: '#17181c',
   inkSoft: '#41454e',
   muted: '#787d87',
   faint: '#a2a6ae',
-  border: '#e7e5de',
-  borderSoft: '#efede7',
-  borderStrong: '#d6d3ca',
+  border: '#E2E8F0',
+  borderSoft: '#EDF1F5',
+  borderStrong: '#CBD5E0',
   red: '#e8384f',
   redDeep: '#bb2038',
   redWash: '#fdf1f2',
@@ -51,7 +51,7 @@ export const channelPalette = {
 };
 
 const fontStack = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-const displayStack = "'Fraunces', 'Iowan Old Style', Georgia, serif";
+const displayStack = fontStack;
 
 export const theme = extendTheme({
   fonts: {
@@ -74,7 +74,7 @@ export const theme = extendTheme({
     }
   },
   shadows: {
-    lift: '0 1px 2px rgba(23, 24, 28, .05), 0 4px 14px rgba(23, 24, 28, .05)'
+    lift: '0 1px 2px rgba(21,24,29,.06), 0 8px 24px rgba(21,24,29,.05)'
   },
   styles: {
     global: {

@@ -2,6 +2,7 @@ import { Center, Spinner } from '@chakra-ui/react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Shell from './components/Shell';
 import LeadsPage from './pages/LeadsPage';
+import LeadDetailPage from './pages/LeadDetailPage';
 import DailyReportPage from './pages/DailyReportPage';
 import SummaryPage from './pages/SummaryPage';
 import SettingsPage from './pages/SettingsPage';
@@ -15,7 +16,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/leads" replace />} />
         <Route path="/leads" element={<LeadsPage />} />
-        <Route path="/leads/:leadId" element={<LeadsPage />} />
+        <Route path="/leads/:leadId" element={<LeadDetailPage />} />
         <Route path="/daily-report" element={<DailyReportPage />} />
         <Route path="/summary" element={<SummaryPage />} />
         <Route path="/settings" element={<SettingsPage />} />

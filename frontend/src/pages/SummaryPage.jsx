@@ -1,10 +1,11 @@
-import { Box, Flex, HStack, SimpleGrid, Skeleton, Text } from '@chakra-ui/react';
+import { Box, Flex, Grid, HStack, Skeleton, Text } from '@chakra-ui/react';
 import { MoveDownRight, MoveUpRight, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PageHeader from '../components/PageHeader';
+import { ChartCard, DonutBreakdown, FunnelOverview, MonthlyMovementChart } from '../components/reports/ReportCharts';
 import { ChannelTag, ErrorBanner, SectionLabel, Surface, formatDate, money, percent } from '../components/ui';
 import { api } from '../services/frappeApi';
-import { tokens } from '../theme';
+import { channelPalette, tokens } from '../theme';
 
 function monthLabel(month) {
   const [year, monthPart] = String(month || '').split('-');
@@ -66,6 +67,13 @@ export default function SummaryPage() {
     { leads: 0, meetings: 0, closed: 0, amount: 0, spend: 0 }
   ), [months]);
 
+  const channelValues = useMemo(() => Object.values(closings.reduce((result, row) => {
+    const channel = row.channel || 'Unknown';
+    result[channel] ||= { channel, amount: 0, color: channelPalette[channel] || tokens.muted };
+    result[channel].amount += Number(row.amount || 0);
+    return result;
+  }, {})).sort((a, b) => b.amount - a.amount), [closings]);
+
   return (
     <Box px={{ base: 4, xl: 8 }} py={6} maxW="1640px" mx="auto" w="100%">
       <PageHeader
@@ -96,6 +104,19 @@ export default function SummaryPage() {
               />
             </Flex>
           </Surface>
+
+          <ChartCard title="Monthly movement" meta={`Leads, meetings and closed value over ${months.length} months`} mb={5}>
+            <MonthlyMovementChart months={months} />
+          </ChartCard>
+
+          <Grid templateColumns={{ base: '1fr', xl: 'minmax(0, 1.35fr) minmax(320px, .65fr)' }} gap={5} mb={5}>
+            <ChartCard title={`Funnel over ${months.length} months`} meta="Stage-to-stage conversion">
+              <FunnelOverview leads={totals.leads} meetings={totals.meetings} closed={totals.closed} />
+            </ChartCard>
+            <ChartCard title="Closed value by channel" meta={`${money(totals.amount, true)} total`}>
+              <DonutBreakdown items={channelValues} valueKey="amount" labelKey="channel" centerLabel="Closed value" formatter={(value) => money(value, true)} />
+            </ChartCard>
+          </Grid>
 
           <Surface overflow="hidden" mb={5}>
             <Flex px={4} py={3} align="center" justify="space-between" borderBottom="1px solid" borderColor={tokens.borderSoft}>

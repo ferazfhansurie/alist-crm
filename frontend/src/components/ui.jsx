@@ -58,7 +58,7 @@ export function ChannelTag({ channel }) {
 
 export function Surface({ children, ...rest }) {
   return (
-    <Box bg="white" border="1px solid" borderColor={tokens.border} borderRadius="10px" {...rest}>
+    <Box bg="white" border="1px solid" borderColor={tokens.borderSoft} borderRadius="14px" boxShadow="lift" {...rest}>
       {children}
     </Box>
   );

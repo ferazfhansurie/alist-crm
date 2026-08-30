@@ -107,7 +107,8 @@ function RowActions({ lead, onAction }) {
 
 export default function LeadTable({
   rows, loading, selectedName, onOpen, onAction,
-  selection, onToggleRow, onToggleAll
+  selection, onToggleRow, onToggleAll, density = 'compact',
+  visibleColumns = { qualification: true, outcome: true, followup: true }
 }) {
   const allChecked = rows.length > 0 && rows.every((row) => selection.has(row.name));
   const someChecked = rows.some((row) => selection.has(row.name));
@@ -121,6 +122,7 @@ export default function LeadTable({
       borderColor={tokens.border}
       overflow="hidden"
       position="relative"
+      style={{ '--lead-row-height': density === 'compact' ? '46px' : '58px' }}
     >
       {loading && <Box position="absolute" inset="0 0 auto 0" h="2px" bg={tokens.red} zIndex={5} className="loading-bar" />}
       <Box h="100%" overflow="auto">
@@ -140,16 +142,16 @@ export default function LeadTable({
               <th style={{ minWidth: 118 }}>Status</th>
               <th style={{ minWidth: 90 }}>PIC</th>
               <th style={{ minWidth: 108 }}>Channel</th>
-              <th style={{ minWidth: 165 }}>Qualification</th>
-              <th style={{ minWidth: 150 }}>Latest outcome</th>
-              <th style={{ minWidth: 135 }}>Follow-up</th>
+              {visibleColumns.qualification && <th style={{ minWidth: 165 }}>Qualification</th>}
+              {visibleColumns.outcome && <th style={{ minWidth: 150 }}>Latest outcome</th>}
+              {visibleColumns.followup && <th style={{ minWidth: 135 }}>Follow-up</th>}
               <th style={{ minWidth: 150 }} aria-label="Quick actions" />
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
               <tr style={{ cursor: 'default' }}>
-                <td colSpan={9} style={{ height: 'auto' }}>
+                <td colSpan={6 + Object.values(visibleColumns).filter(Boolean).length} style={{ height: 'auto' }}>
                   <EmptyState
                     icon={Inbox}
                     title="No leads in this view"
@@ -192,7 +194,7 @@ export default function LeadTable({
                   <td><StatusTag status={lead.status} /></td>
                   <td><OwnerTag owner={lead.alist_pic_name} /></td>
                   <td><ChannelTag channel={lead.alist_channel || lead.source} /></td>
-                  <td>
+                  {visibleColumns.qualification && <td>
                     {band || lead.alist_business_type ? (
                       <Box minW={0}>
                         <Text fontSize="12.5px" fontWeight="600" color={tokens.inkSoft} isTruncated maxW="150px">
@@ -205,14 +207,14 @@ export default function LeadTable({
                     ) : (
                       <Text fontSize="12px" color={tokens.faint}>Not qualified</Text>
                     )}
-                  </td>
-                  <td>
+                  </td>}
+                  {visibleColumns.outcome && <td>
                     <Text fontSize="12.5px" fontWeight="600" color={lead.alist_last_outcome ? tokens.inkSoft : tokens.faint}>
                       {lead.alist_last_outcome || 'No activity'}
                     </Text>
                     <Text mt="1px" fontSize="11px" color={tokens.muted}>{formatRelative(lead.modified)}</Text>
-                  </td>
-                  <td>
+                  </td>}
+                  {visibleColumns.followup && <td>
                     {lead.alist_next_follow_up ? (
                       <Box>
                         <HStack spacing="5px" color={overdue ? tokens.redDeep : tokens.inkSoft}>
@@ -230,7 +232,7 @@ export default function LeadTable({
                     ) : (
                       <Text fontSize="12px" color={tokens.faint}>Not scheduled</Text>
                     )}
-                  </td>
+                  </td>}
                   <td>
                     <Flex justify="flex-end">
                       <RowActions lead={lead} onAction={onAction} />

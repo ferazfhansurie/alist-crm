@@ -1,5 +1,5 @@
 import {
-  Box, Button, Flex, FormControl, FormLabel, HStack, IconButton, Input, Link,
+  Box, Button, Flex, FormControl, FormLabel, Grid, HStack, IconButton, Input, Link,
   Menu, MenuButton, MenuDivider, MenuGroup, MenuItem, MenuList, Select, SimpleGrid,
   Spinner, Tab, TabList, TabPanel, TabPanels, Tabs, Text, Textarea, Tooltip,
   useToast, VStack
@@ -149,6 +149,28 @@ function Section({ title, icon: Icon, children }) {
   );
 }
 
+function CardShell({ title, meta, action, children, ...rest }) {
+  return (
+    <Box className="dc-card" {...rest}>
+      <Flex className="dc-card-head">
+        <Text as="strong">{title}</Text>
+        {action || <Text as="span">{meta}</Text>}
+      </Flex>
+      {children}
+    </Box>
+  );
+}
+
+function LeadAvatar({ lead }) {
+  const initials = String(lead.lead_name || lead.first_name || lead.organization || '?')
+    .split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+  return (
+    <Flex w="60px" h="60px" borderRadius="15px" bg={tokens.ink} color="white" align="center" justify="center" fontSize="20px" fontWeight="750" flexShrink={0}>
+      {initials || '?'}
+    </Flex>
+  );
+}
+
 function StageRail({ status }) {
   const lost = LOST_STATUSES.includes(status);
   const reached = FUNNEL_STAGES.indexOf(status);
@@ -159,12 +181,14 @@ function StageRail({ status }) {
           <Box key={stage} data-done={!lost && reached >= index} data-lost={lost} />
         ))}
       </Box>
-      <Flex mt="6px" justify="space-between">
-        <Text fontSize="10px" color={tokens.faint} fontWeight="650" textTransform="uppercase" letterSpacing=".05em">New</Text>
-        <Text fontSize="10px" color={lost ? tokens.red : tokens.faint} fontWeight="650" textTransform="uppercase" letterSpacing=".05em">
-          {lost ? status : 'Converted'}
-        </Text>
+      <Flex mt="7px" justify="space-between" gap={2}>
+        {FUNNEL_STAGES.map((stage) => (
+          <Text key={stage} flex={1} textAlign="center" fontSize="9.5px" color={lost ? tokens.faint : stage === status ? tokens.ink : tokens.faint} fontWeight={stage === status ? '750' : '650'} textTransform="uppercase" letterSpacing=".04em">
+            {stage}
+          </Text>
+        ))}
       </Flex>
+      {lost && <Text mt={1.5} fontSize="10px" color={tokens.red} fontWeight="750" textAlign="right">Out of funnel · {status}</Text>}
     </Box>
   );
 }
@@ -316,18 +340,18 @@ export default function LeadDetail({ name, onClose, onChanged }) {
 
   if (loading && !data) {
     return (
-      <Flex className="lead-detail-panel" bg="white" borderLeft="1px solid" borderColor={tokens.border} align="center" justify="center">
+      <Flex className="lead-detail-panel" minH="calc(100vh - 56px)" align="center" justify="center">
         <Spinner color="alist.500" />
       </Flex>
     );
   }
   if (loadError && !data) {
     return (
-      <Flex className="lead-detail-panel" bg="white" borderLeft="1px solid" borderColor={tokens.border} direction="column" align="center" justify="center" gap={3} px={8}>
+      <Flex className="lead-detail-panel" minH="calc(100vh - 56px)" direction="column" align="center" justify="center" gap={3} px={8}>
         <Text fontSize="13px" color={tokens.redDeep} textAlign="center">{loadError}</Text>
         <HStack>
           <Button size="sm" variant="quiet" onClick={load}>Try again</Button>
-          <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
+          <Button size="sm" variant="ghost" onClick={onClose}>Back to leads</Button>
         </HStack>
       </Flex>
     );
@@ -339,127 +363,105 @@ export default function LeadDetail({ name, onClose, onChanged }) {
   const overdue = isOverdue(lead);
   const setField = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
 
+  const detailsForm = (
+    <VStack spacing={3} align="stretch">
+      <Section title="Contact" icon={User}>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+          <FormControl><FormLabel>Organization</FormLabel><Input size="sm" value={form.organization} onChange={setField('organization')} /></FormControl>
+          <FormControl><FormLabel>Channel</FormLabel><Select size="sm" value={form.alist_channel} onChange={setField('alist_channel')}><option value="">Not set</option>{CHANNELS.map((channel) => <option key={channel}>{channel}</option>)}</Select></FormControl>
+          <FormControl><FormLabel>Phone / WhatsApp</FormLabel><Input size="sm" value={form.mobile_no} onChange={setField('mobile_no')} /></FormControl>
+          <FormControl><FormLabel>Email</FormLabel><Input size="sm" value={form.email} onChange={setField('email')} /></FormControl>
+        </SimpleGrid>
+      </Section>
+      <Section title="Qualification" icon={Briefcase}>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+          <FormControl><FormLabel>Sales tahunan</FormLabel><Input size="sm" value={form.alist_annual_sales_band} onChange={setField('alist_annual_sales_band')} /></FormControl>
+          <FormControl><FormLabel>Sales bulanan</FormLabel><Input size="sm" value={form.alist_monthly_sales_text} onChange={setField('alist_monthly_sales_text')} /></FormControl>
+          <FormControl><FormLabel>Business type</FormLabel><Input size="sm" value={form.alist_business_type} onChange={setField('alist_business_type')} /></FormControl>
+          <FormControl><FormLabel>Service required</FormLabel><Input size="sm" value={form.alist_service_required} onChange={setField('alist_service_required')} /></FormControl>
+        </SimpleGrid>
+      </Section>
+      <Section title="Follow-up" icon={CalendarClock}>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+          <FormControl><FormLabel>Last outcome</FormLabel><Select size="sm" value={form.alist_last_outcome} onChange={setField('alist_last_outcome')}><option value="">Not set</option>{OUTCOMES.map((outcome) => <option key={outcome}>{outcome}</option>)}</Select></FormControl>
+          <FormControl><FormLabel>Next follow-up</FormLabel><Input size="sm" type="datetime-local" value={form.alist_next_follow_up} onChange={setField('alist_next_follow_up')} /></FormControl>
+        </SimpleGrid>
+        <FormControl mt={3}><FormLabel>Remark</FormLabel><Textarea size="sm" rows={3} value={form.alist_remark} onChange={setField('alist_remark')} /></FormControl>
+      </Section>
+    </VStack>
+  );
+
+  const tasksAndNotes = (
+    <Box>
+      <SectionLabel mb={3}>Tasks</SectionLabel>
+      {(data.tasks || []).length ? (data.tasks || []).map((task) => (
+        <Flex key={task.name} mb={2} p={3} border="1px solid" borderColor={tokens.borderSoft} borderRadius="9px" align="center" justify="space-between" gap={3}>
+          <Box minW={0}><Text fontSize="12.5px" fontWeight="650" isTruncated>{task.title || task.subject || task.name}</Text><Text mt={0.5} fontSize="11px" color={tokens.muted}>Due {formatDate(task.due_date || task.modified)}</Text></Box>
+          <Text fontSize="10.5px" fontWeight="750" color={task.status === 'Done' ? tokens.ok : tokens.inkSoft} px={2} py={1} bg={task.status === 'Done' ? tokens.okWash : tokens.surfaceTint} borderRadius="5px">{task.status || 'Open'}</Text>
+        </Flex>
+      )) : <Text color={tokens.faint} fontSize="12.5px" py={2}>No tasks linked to this lead.</Text>}
+      <SectionLabel mt={5} mb={3}>Notes</SectionLabel>
+      {(data.notes || []).length ? (data.notes || []).map((noteItem) => (
+        <Box key={noteItem.name} mb={2} p={3} border="1px solid" borderColor={tokens.borderSoft} borderRadius="9px"><HStack spacing={2}><StickyNote size={13} color={tokens.warn} /><Text fontSize="12.5px" fontWeight="650">{noteItem.title || 'Note'}</Text></HStack><Text mt={1.5} fontSize="12px" color={tokens.inkSoft} whiteSpace="pre-wrap">{plainText(noteItem.content || noteItem.note)}</Text></Box>
+      )) : <Text color={tokens.faint} fontSize="12.5px" py={2}>No notes linked to this lead.</Text>}
+    </Box>
+  );
+
   return (
-    <Flex className="lead-detail-panel" direction="column" minW={0} bg="white" borderLeft="1px solid" borderColor={tokens.border}>
-      <Box px={5} pt={3.5} pb={4} borderBottom="1px solid" borderColor={tokens.borderSoft}>
-        <Flex align="center" justify="space-between" mb={3}>
-          <Button display={{ base: 'inline-flex', xl: 'none' }} size="sm" variant="ghost" leftIcon={<ArrowLeft size={15} />} onClick={onClose}>
-            Leads
-          </Button>
-          <Text display={{ base: 'none', xl: 'block' }} className="num" fontSize="10.5px" color={tokens.faint} fontWeight="650" letterSpacing=".05em">
-            {lead.name}
-          </Text>
-          <HStack spacing={1}>
-            <Tooltip label="Refresh lead">
-              <IconButton size="sm" variant="ghost" aria-label="Refresh lead" icon={<RefreshCw size={14} />} onClick={load} isLoading={loading} />
-            </Tooltip>
-            <IconButton size="sm" variant="ghost" aria-label="Close lead" icon={<X size={16} />} onClick={onClose} />
-          </HStack>
-        </Flex>
+    <Box className="lead-detail-panel" px={{ base: 4, xl: 7 }} py={{ base: 4, xl: 6 }} maxW="1640px" mx="auto" w="100%">
+      <Flex align="center" justify="space-between" mb={4} gap={4}>
+        <Button size="sm" variant="ghost" leftIcon={<ArrowLeft size={15} />} onClick={onClose}>All leads</Button>
+        <HStack spacing={2}><Text className="num" fontSize="11px" color={tokens.faint}>{lead.name}</Text><Tooltip label="Refresh lead"><IconButton size="sm" variant="quiet" aria-label="Refresh lead" icon={<RefreshCw size={14} />} onClick={load} isLoading={loading} /></Tooltip></HStack>
+      </Flex>
 
-        <Flex align="flex-start" justify="space-between" gap={4}>
-          <Box minW={0}>
-            <Text fontFamily="display" fontSize="20px" fontWeight="600" letterSpacing="-.01em" lineHeight="1.25" noOfLines={2}>
-              {lead.lead_name || lead.first_name || 'Unnamed lead'}
-            </Text>
-            <HStack mt={1.5} spacing={3} flexWrap="wrap">
-              <Text fontSize="12.5px" color={tokens.muted} isTruncated maxW="220px">
-                {lead.organization || 'No organization'}
-              </Text>
-              <ChannelTag channel={lead.alist_channel || lead.source} />
-            </HStack>
+      <Tabs colorScheme="red" isLazy>
+        <Box position="relative" overflow="hidden" bg="white" border="1px solid" borderColor={tokens.borderSoft} borderRadius="16px" boxShadow="lift" _before={{ content: '""', position: 'absolute', inset: '0 auto 0 0', w: '5px', bg: `linear-gradient(180deg, ${tokens.red}, ${tokens.ink})` }}>
+          <Box px={{ base: 5, xl: 7 }} pt={{ base: 5, xl: 6 }}>
+            <Flex align={{ base: 'flex-start', lg: 'center' }} justify="space-between" gap={5} direction={{ base: 'column', lg: 'row' }}>
+              <HStack align="center" spacing={4} minW={0}>
+                <LeadAvatar lead={lead} />
+                <Box minW={0}>
+                  <HStack spacing={2.5} flexWrap="wrap"><Text fontSize={{ base: '24px', xl: '30px' }} fontWeight="750" letterSpacing="-.025em" lineHeight="1.1">{lead.lead_name || lead.first_name || 'Unnamed lead'}</Text><StatusTag status={lead.status} size="md" /></HStack>
+                  <HStack mt={2} spacing={3} flexWrap="wrap"><Text fontSize="13px" color={tokens.muted}>{lead.organization || 'No organization'}</Text><ChannelTag channel={lead.alist_channel || lead.source} />{lead.alist_campaign_name && <Text fontSize="12px" color={tokens.faint}>{lead.alist_campaign_name}</Text>}</HStack>
+                </Box>
+              </HStack>
+              <HStack spacing={2} flexWrap="wrap">
+                <Button as={wa ? Link : undefined} href={wa || undefined} target="_blank" isDisabled={!wa} size="sm" variant="quiet" leftIcon={<MessageCircle size={14} />}>WhatsApp</Button>
+                <Button as={lead.mobile_no ? Link : undefined} href={lead.mobile_no ? `tel:${lead.mobile_no}` : undefined} isDisabled={!lead.mobile_no} size="sm" variant="quiet" leftIcon={<Phone size={14} />}>Call</Button>
+                <Button as={lead.email ? Link : undefined} href={lead.email ? `mailto:${lead.email}` : undefined} isDisabled={!lead.email} size="sm" variant="quiet" leftIcon={<Mail size={14} />}>Email</Button>
+                <Menu placement="bottom-end"><MenuButton as={Button} size="sm" variant="quiet" rightIcon={<ChevronDown size={13} />} isLoading={ownerBusy}><OwnerTag owner={lead.alist_pic_name} /></MenuButton><MenuList minW="160px"><MenuGroup title="Pass to">{Object.keys(settings?.owner_colors || {}).map((owner) => <MenuItem key={owner} onClick={() => changeOwner(owner)}>{owner}</MenuItem>)}</MenuGroup></MenuList></Menu>
+              </HStack>
+            </Flex>
+
+            <Box mt={6}><StageRail status={lead.status} /></Box>
+            <SimpleGrid mt={6} columns={{ base: 2, md: 3, xl: 5 }} spacingX={6} spacingY={4}>
+              <FactCell label="Phone">{lead.mobile_no}</FactCell><FactCell label="Email">{lead.email && <Text isTruncated>{lead.email}</Text>}</FactCell><FactCell label="Sales tahunan">{humanizeBand(lead.alist_annual_sales_band)}</FactCell><FactCell label="Lead in">{formatDate(lead.alist_lead_datetime, true)}</FactCell><FactCell label="Next follow-up">{lead.alist_next_follow_up && <Text color={overdue ? tokens.redDeep : tokens.ink} fontWeight={overdue ? '750' : '550'}>{formatDate(lead.alist_next_follow_up, true)}{overdue ? ' · overdue' : ''}</Text>}</FactCell>
+            </SimpleGrid>
+            {data.deal && <Flex mt={5} px={4} py={3} borderRadius="10px" bg={tokens.surfaceTint} border="1px solid" borderColor={tokens.border} align="center" gap={5} flexWrap="wrap"><HStack spacing={2}><Trophy size={14} color={tokens.warn} /><Text fontSize="12.5px" fontWeight="750">Deal · {data.deal.status}</Text></HStack><HStack spacing={5} className="num" fontSize="12px" color={tokens.inkSoft}>{Boolean(data.deal.alist_proposal_value) && <Text>Proposal {money(data.deal.alist_proposal_value, true)}</Text>}{Boolean(data.deal.alist_confirmed_value) && <Text fontWeight="750" color={tokens.ok}>Confirmed {money(data.deal.alist_confirmed_value, true)}</Text>}{data.deal.alist_next_follow_up && <Text>Next {formatDate(data.deal.alist_next_follow_up)}</Text>}</HStack></Flex>}
           </Box>
-          <StatusTag status={lead.status} size="md" />
-        </Flex>
-
-        <Box mt={4}>
-          <StageRail status={lead.status} />
+          <TabList mt={5} px={{ base: 5, xl: 7 }} borderColor={tokens.borderSoft}>
+            {[['Activity', timeline.length], ['Details'], ['Tasks & notes', (data.tasks || []).length + (data.notes || []).length], ['Files', (data.attachments || []).length]].map(([label, count]) => <Tab key={label} fontSize="13px" fontWeight="650" px={0} mr={7} py={3} color={tokens.muted} _selected={{ color: tokens.ink, borderColor: tokens.red }}>{label}{count !== undefined && <Text as="span" ml={2} px={2} py="1px" borderRadius="full" bg={label === 'Activity' ? tokens.redWash : tokens.surfaceTint} color={label === 'Activity' ? tokens.redDeep : tokens.muted} fontSize="10.5px">{count}</Text>}</Tab>)}
+          </TabList>
         </Box>
 
-        <Flex mt={4} gap={2} align="center" flexWrap="wrap">
-          <Button as={wa ? Link : undefined} href={wa || undefined} target="_blank" isDisabled={!wa} size="sm" variant="quiet" leftIcon={<MessageCircle size={14} />}>
-            WhatsApp
-          </Button>
-          <Button as={lead.mobile_no ? Link : undefined} href={lead.mobile_no ? `tel:${lead.mobile_no}` : undefined} isDisabled={!lead.mobile_no} size="sm" variant="quiet" leftIcon={<Phone size={14} />}>
-            Call
-          </Button>
-          <Button as={lead.email ? Link : undefined} href={lead.email ? `mailto:${lead.email}` : undefined} isDisabled={!lead.email} size="sm" variant="quiet" leftIcon={<Mail size={14} />}>
-            Email
-          </Button>
-          <Box ml="auto">
-            <Menu placement="bottom-end">
-              <MenuButton as={Button} size="sm" variant="quiet" rightIcon={<ChevronDown size={13} />} isLoading={ownerBusy}>
-                <OwnerTag owner={lead.alist_pic_name} />
-              </MenuButton>
-              <MenuList minW="150px">
-                <MenuGroup title="Pass to" fontSize="10.5px" textTransform="uppercase" letterSpacing=".07em" color={tokens.muted}>
-                  {Object.keys(settings?.owner_colors || {}).map((owner) => (
-                    <MenuItem key={owner} onClick={() => changeOwner(owner)}>{owner}</MenuItem>
-                  ))}
-                </MenuGroup>
-              </MenuList>
-            </Menu>
-          </Box>
-        </Flex>
-
-        <SimpleGrid mt={4} columns={{ base: 2, sm: 3 }} spacingX={4} spacingY={3}>
-          <FactCell label="Phone">{lead.mobile_no}</FactCell>
-          <FactCell label="Email">
-            {lead.email && <Text isTruncated maxW="160px">{lead.email}</Text>}
-          </FactCell>
-          <FactCell label="Sales tahunan">{humanizeBand(lead.alist_annual_sales_band)}</FactCell>
-          <FactCell label="Lead in">{formatDate(lead.alist_lead_datetime, true)}</FactCell>
-          <FactCell label="Next follow-up">
-            {lead.alist_next_follow_up ? (
-              <Text color={overdue ? tokens.redDeep : tokens.ink} fontWeight={overdue ? '700' : '550'}>
-                {formatDate(lead.alist_next_follow_up, true)}{overdue ? ' · overdue' : ''}
-              </Text>
-            ) : null}
-          </FactCell>
-          <FactCell label="Last outcome">{lead.alist_last_outcome}</FactCell>
-        </SimpleGrid>
-
-        {data.deal && (
-          <Flex mt={4} px={3.5} py={3} borderRadius="8px" bg={tokens.surfaceTint} border="1px solid" borderColor={tokens.borderSoft} align="center" gap={4} flexWrap="wrap">
-            <HStack spacing={2}>
-              <Trophy size={14} color={tokens.warn} />
-              <Text fontSize="12px" fontWeight="750">Deal · {data.deal.status}</Text>
-            </HStack>
-            <HStack spacing={4} className="num" fontSize="12px" color={tokens.inkSoft}>
-              {Boolean(data.deal.alist_proposal_value) && <Text>Proposal {money(data.deal.alist_proposal_value, true)}</Text>}
-              {Boolean(data.deal.alist_confirmed_value) && <Text fontWeight="700" color={tokens.ok}>Confirmed {money(data.deal.alist_confirmed_value, true)}</Text>}
-              {data.deal.alist_next_follow_up && <Text>Next {formatDate(data.deal.alist_next_follow_up)}</Text>}
-            </HStack>
-          </Flex>
-        )}
-      </Box>
-
-      <Tabs display="flex" flex={1} minH={0} flexDirection="column" colorScheme="red" isLazy>
-        <TabList px={5} borderColor={tokens.borderSoft}>
-          {['Activity', 'Details', 'Tasks & notes', 'Files'].map((label) => (
-            <Tab key={label} fontSize="12.5px" fontWeight="650" px={0} mr={5} color={tokens.muted} _selected={{ color: tokens.ink, borderColor: tokens.red }}>
-              {label}
-            </Tab>
-          ))}
-        </TabList>
-
-        <TabPanels flex={1} minH={0} overflow="hidden">
-          {/* ---- activity ---- */}
-          <TabPanel h="100%" overflowY="auto" px={5} py={4}>
-            <Box border="1px solid" borderColor={tokens.borderSoft} borderRadius="10px" bg={tokens.surfaceTint} overflow="hidden">
-              <Flex borderBottom="1px solid" borderColor={tokens.borderSoft}>
+        <TabPanels mt={5}>
+          <TabPanel p={0}>
+            <Grid templateColumns={{ base: '1fr', xl: 'minmax(0, 1fr) 350px' }} gap={5} alignItems="start">
+              <VStack spacing={5} align="stretch">
+                <CardShell title="Log activity" meta="Updates the lead status automatically">
+                  <Box p={4}>
+                    <Flex border="1px solid" borderColor={tokens.borderSoft} borderRadius="10px" overflow="hidden" mb={3} w="fit-content">
                 {[['activity', 'Log activity', ClipboardList], ['comment', 'Comment', MessageSquare]].map(([mode, label, Icon]) => (
                   <Flex
                     key={mode}
                     as="button"
-                    flex={1}
+                    px={5}
                     align="center"
                     justify="center"
                     gap={2}
                     py={2.5}
                     bg={composerMode === mode ? 'white' : 'transparent'}
-                    borderBottom="2px solid"
-                    borderColor={composerMode === mode ? tokens.red : 'transparent'}
+                    borderBottom="2px solid" borderColor={composerMode === mode ? tokens.red : 'transparent'}
                     color={composerMode === mode ? tokens.ink : tokens.muted}
                     fontSize="12px"
                     fontWeight="700"
@@ -469,8 +471,7 @@ export default function LeadDetail({ name, onClose, onChanged }) {
                     {label}
                   </Flex>
                 ))}
-              </Flex>
-              <Box p={3.5}>
+                    </Flex>
                 {composerMode === 'activity' && (
                   <>
                     <Flex gap={1.5} flexWrap="wrap" mb={2.5}>
@@ -540,11 +541,12 @@ export default function LeadDetail({ name, onClose, onChanged }) {
                     {composerMode === 'activity' ? 'Log activity' : 'Comment'}
                   </Button>
                 </Flex>
-              </Box>
-            </Box>
+                  </Box>
+                </CardShell>
 
-            <Flex mt={5} mb={4} align="center" justify="space-between" gap={3}>
-              <HStack spacing={1}>
+                <CardShell title="Activity timeline" meta={`${visibleTimeline.length} entries · newest first`}>
+                  <Flex px={4} py={3} align="center" justify="space-between" borderBottom="1px solid" borderColor={tokens.borderSoft}>
+                    <HStack spacing={1}>
                 {TIMELINE_FILTERS.map((filter) => (
                   <Button
                     key={filter.key}
@@ -556,111 +558,31 @@ export default function LeadDetail({ name, onClose, onChanged }) {
                     {filter.label}
                   </Button>
                 ))}
-              </HStack>
-              <Text className="num" fontSize="11px" color={tokens.faint}>{visibleTimeline.length} entries</Text>
-            </Flex>
+                    </HStack>
+                    <Text className="num" fontSize="11px" color={tokens.faint}>{timeline.length} total</Text>
+                  </Flex>
+                  <Box p={{ base: 4, xl: 5 }}>{visibleTimeline.length ? visibleTimeline.map((entry, index) => <TimelineItem key={`${entry.id}-${index}`} entry={entry} last={index === visibleTimeline.length - 1} />) : <EmptyState icon={CircleDot} title="Nothing here yet" hint="Logged calls, WhatsApps, meetings and comments appear on this timeline." py={8} />}</Box>
+                </CardShell>
+              </VStack>
 
-            {visibleTimeline.length ? (
-              visibleTimeline.map((entry, index) => (
-                <TimelineItem key={`${entry.id}-${index}`} entry={entry} last={index === visibleTimeline.length - 1} />
-              ))
-            ) : (
-              <EmptyState icon={CircleDot} title="Nothing here yet" hint="Logged calls, WhatsApps, meetings and comments appear on this timeline." py={8} />
-            )}
+              <VStack spacing={5} align="stretch">
+                <CardShell title="Details" action={<Button size="xs" color="white" bg="whiteAlpha.200" leftIcon={<Save size={12} />} onClick={saveDetails} isLoading={saving} _hover={{ bg: 'whiteAlpha.300' }}>Save changes</Button>}><Box p={4}>{detailsForm}</Box></CardShell>
+                <CardShell title="Source context" meta="Read-only"><SimpleGrid p={4} columns={2} spacingX={4} spacingY={4}><FactCell label="Campaign">{lead.alist_campaign_name}</FactCell><FactCell label="Ad set">{lead.alist_adset_name}</FactCell><FactCell label="Ad">{lead.alist_ad_name}</FactCell><FactCell label="Form">{lead.alist_form_name}</FactCell><FactCell label="Workbook tab">{lead.alist_source_tab}</FactCell><FactCell label="Original status">{lead.alist_original_status}</FactCell></SimpleGrid></CardShell>
+                <CardShell title="Tasks and notes" meta="From Frappe · read-only"><Box p={4}>{tasksAndNotes}</Box></CardShell>
+              </VStack>
+            </Grid>
           </TabPanel>
 
-          {/* ---- details ---- */}
-          <TabPanel h="100%" overflowY="auto" px={5} py={4} display="flex" flexDirection="column">
-            <VStack spacing={3} align="stretch" flex={1}>
-              <Section title="Contact" icon={User}>
-                <SimpleGrid columns={2} spacing={3}>
-                  <FormControl><FormLabel>Organization</FormLabel><Input size="sm" value={form.organization} onChange={setField('organization')} /></FormControl>
-                  <FormControl>
-                    <FormLabel>Channel</FormLabel>
-                    <Select size="sm" value={form.alist_channel} onChange={setField('alist_channel')}>
-                      <option value="">Not set</option>
-                      {CHANNELS.map((channel) => <option key={channel}>{channel}</option>)}
-                    </Select>
-                  </FormControl>
-                  <FormControl><FormLabel>Phone / WhatsApp</FormLabel><Input size="sm" value={form.mobile_no} onChange={setField('mobile_no')} /></FormControl>
-                  <FormControl><FormLabel>Email</FormLabel><Input size="sm" value={form.email} onChange={setField('email')} /></FormControl>
-                </SimpleGrid>
-              </Section>
-              <Section title="Qualification" icon={Briefcase}>
-                <SimpleGrid columns={2} spacing={3}>
-                  <FormControl><FormLabel>Sales tahunan</FormLabel><Input size="sm" value={form.alist_annual_sales_band} onChange={setField('alist_annual_sales_band')} /></FormControl>
-                  <FormControl><FormLabel>Sales bulanan</FormLabel><Input size="sm" value={form.alist_monthly_sales_text} onChange={setField('alist_monthly_sales_text')} /></FormControl>
-                  <FormControl><FormLabel>Business type</FormLabel><Input size="sm" value={form.alist_business_type} onChange={setField('alist_business_type')} /></FormControl>
-                  <FormControl><FormLabel>Service required</FormLabel><Input size="sm" value={form.alist_service_required} onChange={setField('alist_service_required')} /></FormControl>
-                </SimpleGrid>
-              </Section>
-              <Section title="Follow-up" icon={CalendarClock}>
-                <SimpleGrid columns={2} spacing={3}>
-                  <FormControl>
-                    <FormLabel>Last outcome</FormLabel>
-                    <Select size="sm" value={form.alist_last_outcome} onChange={setField('alist_last_outcome')}>
-                      <option value="">Not set</option>
-                      {OUTCOMES.map((outcome) => <option key={outcome}>{outcome}</option>)}
-                    </Select>
-                  </FormControl>
-                  <FormControl><FormLabel>Next follow-up</FormLabel><Input size="sm" type="datetime-local" value={form.alist_next_follow_up} onChange={setField('alist_next_follow_up')} /></FormControl>
-                </SimpleGrid>
-                <FormControl mt={3}><FormLabel>Remark</FormLabel><Textarea size="sm" rows={4} value={form.alist_remark} onChange={setField('alist_remark')} /></FormControl>
-              </Section>
-              <Section title="Source context" icon={FileText}>
-                <SimpleGrid columns={2} spacingX={4} spacingY={4}>
-                  <FactCell label="Campaign">{lead.alist_campaign_name}</FactCell>
-                  <FactCell label="Ad set">{lead.alist_adset_name}</FactCell>
-                  <FactCell label="Ad">{lead.alist_ad_name}</FactCell>
-                  <FactCell label="Form">{lead.alist_form_name}</FactCell>
-                  <FactCell label="Workbook tab">{lead.alist_source_tab}</FactCell>
-                  <FactCell label="Original status">{lead.alist_original_status}</FactCell>
-                </SimpleGrid>
-              </Section>
-            </VStack>
-            <Flex position="sticky" bottom={0} mt={4} py={3} bg="white" borderTop="1px solid" borderColor={tokens.borderSoft} justify="flex-end">
-              <Button leftIcon={<Save size={15} />} variant="ink" onClick={saveDetails} isLoading={saving}>
-                Save changes
-              </Button>
-            </Flex>
+          <TabPanel p={0}>
+            <CardShell title="Lead details" action={<Button size="xs" color="white" bg="whiteAlpha.200" leftIcon={<Save size={12} />} onClick={saveDetails} isLoading={saving}>Save changes</Button>}><Box p={{ base: 4, xl: 6 }} maxW="980px">{detailsForm}</Box></CardShell>
           </TabPanel>
 
-          {/* ---- tasks & notes ---- */}
-          <TabPanel h="100%" overflowY="auto" px={5} py={4}>
-            <SectionLabel mb={3}>Tasks</SectionLabel>
-            {(data.tasks || []).length ? (
-              (data.tasks || []).map((task) => (
-                <Flex key={task.name} mb={2} p={3} border="1px solid" borderColor={tokens.borderSoft} borderRadius="8px" align="center" justify="space-between" gap={3}>
-                  <Box minW={0}>
-                    <Text fontSize="12.5px" fontWeight="650" isTruncated>{task.title || task.subject || task.name}</Text>
-                    <Text mt={0.5} fontSize="11px" color={tokens.muted}>Due {formatDate(task.due_date || task.modified)}</Text>
-                  </Box>
-                  <Text fontSize="11px" fontWeight="700" color={task.status === 'Done' ? tokens.ok : tokens.inkSoft} px={2} py={1} bg={task.status === 'Done' ? tokens.okWash : tokens.surfaceTint} borderRadius="5px" whiteSpace="nowrap">
-                    {task.status || 'Open'}
-                  </Text>
-                </Flex>
-              ))
-            ) : (
-              <Text color={tokens.faint} fontSize="12.5px" py={3}>No tasks linked to this lead.</Text>
-            )}
-            <SectionLabel mt={6} mb={3}>Notes</SectionLabel>
-            {(data.notes || []).length ? (
-              (data.notes || []).map((noteItem) => (
-                <Box key={noteItem.name} mb={2} p={3} border="1px solid" borderColor={tokens.borderSoft} borderRadius="8px">
-                  <HStack spacing={2}>
-                    <StickyNote size={13} color={tokens.warn} />
-                    <Text fontSize="12.5px" fontWeight="650">{noteItem.title || 'Note'}</Text>
-                  </HStack>
-                  <Text mt={1.5} fontSize="12px" color={tokens.inkSoft} whiteSpace="pre-wrap">{plainText(noteItem.content || noteItem.note)}</Text>
-                </Box>
-              ))
-            ) : (
-              <Text color={tokens.faint} fontSize="12.5px" py={3}>No notes linked to this lead.</Text>
-            )}
+          <TabPanel p={0}>
+            <CardShell title="Tasks and notes" meta="From Frappe · read-only"><Box p={{ base: 4, xl: 6 }} maxW="900px">{tasksAndNotes}</Box></CardShell>
           </TabPanel>
 
-          {/* ---- files ---- */}
-          <TabPanel h="100%" overflowY="auto" px={5} py={4}>
+          <TabPanel p={0}>
+            <CardShell title="Files" meta={`${(data.attachments || []).length} attachments`}><Box p={{ base: 4, xl: 6 }}>
             {(data.attachments || []).length ? (
               (data.attachments || []).map((file) => (
                 <Flex key={file.name} align="center" gap={3} p={3} mb={2} border="1px solid" borderColor={tokens.borderSoft} borderRadius="8px">
@@ -678,9 +600,10 @@ export default function LeadDetail({ name, onClose, onChanged }) {
             ) : (
               <EmptyState icon={FileText} title="No files yet" hint="Attachments added to this lead will be listed here." py={10} />
             )}
+            </Box></CardShell>
           </TabPanel>
         </TabPanels>
       </Tabs>
-    </Flex>
+    </Box>
   );
 }
