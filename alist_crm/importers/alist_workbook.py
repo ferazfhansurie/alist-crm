@@ -295,7 +295,7 @@ def _reporting_data(path: str) -> dict:
 		remark_col = next((col for col, label in headers.items() if label == "remark"), None)
 		awareness_col = next((col for col, label in headers.items() if label == "awareness"), None)
 		meta_leads = meta_meetings = 0
-		meta_spend = 0.0
+		meta_spend = meta_awareness = 0.0
 		first_data_row = header_row + 2
 		last_data_row = first_data_row + monthrange(year, month_number)[1]
 		for row in range(first_data_row, last_data_row):
@@ -305,9 +305,11 @@ def _reporting_data(path: str) -> dict:
 			reported_leads = int(_number(_value(sheet, row, lead_col)))
 			reported_meetings = int(_number(_value(sheet, row, meeting_col)))
 			lead_spend = _number(_value(sheet, row, spend_col))
+			awareness_spend = _number(_value(sheet, row, awareness_col))
 			meta_leads += reported_leads
 			meta_meetings += reported_meetings
 			meta_spend += lead_spend
+			meta_awareness += awareness_spend
 			daily_rows.append(
 				{
 					"date": report_date.date().isoformat(),
@@ -316,7 +318,7 @@ def _reporting_data(path: str) -> dict:
 					"reported_meetings": reported_meetings,
 					"monthly_adjustment": 0,
 					"lead_spend": lead_spend,
-					"awareness_spend": _number(_value(sheet, row, awareness_col)),
+					"awareness_spend": awareness_spend,
 					"remark": _text(_value(sheet, row, remark_col)) or None,
 				}
 			)
@@ -327,6 +329,12 @@ def _reporting_data(path: str) -> dict:
 		remaining_leads = target["leads"] - meta_leads
 		remaining_meetings = target["meetings"] - meta_meetings
 		remaining_spend = target["spend"] - meta_spend
+		summary_headers = {
+			_header(cell.value): cell.column for cell in sheet[2] if _header(cell.value)
+		}
+		target_awareness = _number(_value(sheet, 4, summary_headers.get("awareness spend")))
+		remaining_awareness = target_awareness - meta_awareness
+		month_adjustments = []
 		for row in range(6, min(header_row, 12)):
 			label = _text(sheet.cell(row, 1).value)
 			channel = {"TIKTOK": "TikTok", "GOOGLE": "Google", "FOUNDER SERIES": "Founder Series"}.get(label.upper())
@@ -335,23 +343,49 @@ def _reporting_data(path: str) -> dict:
 			reported_leads = max(min(int(_number(sheet.cell(row, 2).value)), remaining_leads), 0)
 			reported_meetings = max(min(int(_number(sheet.cell(row, 9).value)), remaining_meetings), 0)
 			lead_spend = max(min(_number(sheet.cell(row, 12).value), remaining_spend), 0)
+			awareness_spend = max(
+				min(_number(_value(sheet, row, summary_headers.get("awareness spend"))), remaining_awareness),
+				0,
+			)
 			remaining_leads -= reported_leads
 			remaining_meetings -= reported_meetings
 			remaining_spend -= lead_spend
-			if not any((reported_leads, reported_meetings, lead_spend)):
+			remaining_awareness -= awareness_spend
+			if not any((reported_leads, reported_meetings, lead_spend, awareness_spend)):
 				continue
-			daily_rows.append(
-				{
+			adjustment = {
+				"date": date(year, month_number, 1).isoformat(),
+				"channel": channel,
+				"reported_leads": reported_leads,
+				"reported_meetings": reported_meetings,
+				"monthly_adjustment": 1,
+				"lead_spend": lead_spend,
+				"awareness_spend": awareness_spend,
+				"remark": "Workbook monthly channel total",
+			}
+			daily_rows.append(adjustment)
+			month_adjustments.append(adjustment)
+
+		residuals = (remaining_leads, remaining_meetings, remaining_spend, remaining_awareness)
+		if any(abs(value) > 0.005 for value in residuals):
+			if month_adjustments:
+				adjustment = month_adjustments[-1]
+			else:
+				adjustment = {
 					"date": date(year, month_number, 1).isoformat(),
-					"channel": channel,
-					"reported_leads": reported_leads,
-					"reported_meetings": reported_meetings,
+					"channel": "Google",
+					"reported_leads": 0,
+					"reported_meetings": 0,
 					"monthly_adjustment": 1,
-					"lead_spend": lead_spend,
+					"lead_spend": 0,
 					"awareness_spend": 0,
-					"remark": "Workbook monthly channel total",
+					"remark": "Workbook monthly total adjustment",
 				}
-			)
+				daily_rows.append(adjustment)
+			adjustment["reported_leads"] += int(remaining_leads)
+			adjustment["reported_meetings"] += int(remaining_meetings)
+			adjustment["lead_spend"] += remaining_spend
+			adjustment["awareness_spend"] += remaining_awareness
 
 	return {"monthly": monthly, "closings": closings, "daily": daily_rows}
 
