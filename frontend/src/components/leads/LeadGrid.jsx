@@ -10,7 +10,7 @@ import StatusActions from './StatusActions';
 import StatusChips from './StatusChips';
 
 function bandClass(value = '') {
-  const text = value.toLowerCase();
+  const text = String(value || '').toLowerCase();
   if (text.includes('above') || text.includes('lebih') || text.includes('1,000,000')) return 'money-band-top';
   if (text.includes('500,000')) return 'money-band-high';
   if (text.includes('100,000')) return 'money-band-mid';
