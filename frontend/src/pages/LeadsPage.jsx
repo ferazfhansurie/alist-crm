@@ -32,7 +32,7 @@ export default function LeadsPage() {
 
   return (
     <Box px={{ base: 4, xl: 8 }} py={6}>
-      <PageHeader title="Leads" description="The same working table, with the history and reporting handled underneath." actions={
+      <PageHeader title="Lead Sheet Audit" description="Workbook-style audit view. Use Leads for the full CRM record and activity timeline." actions={
         <HStack><Input type="month" value={month} onChange={(event) => setMonth(event.target.value)} bg="white" w="170px" /><Button variant="outline" leftIcon={<RefreshCw size={16} />} onClick={load}>Refresh</Button></HStack>
       } />
       <Flex gap={2} mb={4} overflowX="auto" pb={1}>

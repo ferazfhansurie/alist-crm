@@ -14,7 +14,7 @@ add_to_apps_screen = [
 		"name": "alist",
 		"logo": "/assets/alist_crm/images/alist-logo.png",
 		"title": "A-List CRM",
-		"route": "/alist",
+		"route": "/crm/leads",
 		"has_permission": "alist_crm.api.has_app_permission",
 	}
 ]
@@ -27,6 +27,20 @@ doc_events = {
 	"CRM Lead": {
 		"before_insert": "alist_crm.services.assignment.assign_if_needed",
 	},
+}
+
+override_doctype_class = {
+	"CRM Lead": "alist_crm.overrides.lead.AListCRMLead",
+}
+
+override_whitelisted_methods = {
+	"crm.api.activities.get_activities": "alist_crm.overrides.activities.get_activities",
+	"crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_fields_layout": (
+		"alist_crm.overrides.fields_layout.get_fields_layout"
+	),
+	"crm.fcrm.doctype.crm_fields_layout.crm_fields_layout.get_sidepanel_sections": (
+		"alist_crm.overrides.fields_layout.get_sidepanel_sections"
+	),
 }
 
 # Apps
