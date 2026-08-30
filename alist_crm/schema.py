@@ -27,6 +27,17 @@ ASSIGNMENT_POOLS = {
 	"Founder Series": ["Tika", "Izzy", "Fatin", "Aiman"],
 }
 
+LEAD_SOURCES = [
+	"Meta",
+	"TikTok",
+	"Google",
+	"Founder Series",
+	"Boss / Manual",
+	"Talent",
+	"Past Client",
+	"Website",
+]
+
 LEAD_STATUSES = [
 	("New", "gray", 1),
 	("Contacted", "orange", 2),

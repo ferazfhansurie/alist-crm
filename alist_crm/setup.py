@@ -1,6 +1,6 @@
 import frappe
 
-from alist_crm.schema import LEAD_FIELDS, LEAD_STATUSES, MODULE, default_settings
+from alist_crm.schema import LEAD_FIELDS, LEAD_SOURCES, LEAD_STATUSES, MODULE, default_settings
 
 
 DEAL_STAGES = [
@@ -123,6 +123,15 @@ def _ensure_lead_statuses():
 		doc.save(ignore_permissions=True)
 
 
+def _ensure_lead_sources():
+	for source in LEAD_SOURCES:
+		if frappe.db.exists("CRM Lead Source", source):
+			continue
+		doc = frappe.new_doc("CRM Lead Source")
+		doc.source_name = source
+		doc.save(ignore_permissions=True)
+
+
 def _ensure_fields(doctype, fields, insert_after):
 	created = 0
 	for field in fields:
@@ -157,6 +166,7 @@ def run():
 	_ensure_branding()
 	_ensure_deal_stages()
 	_ensure_lead_statuses()
+	_ensure_lead_sources()
 	deal_created = _ensure_fields("CRM Deal", DEAL_FIELDS, "status")
 	lead_created = _ensure_fields("CRM Lead", LEAD_FIELDS, "source")
 	_ensure_settings()
