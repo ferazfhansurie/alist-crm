@@ -1,6 +1,6 @@
-import { Box, Center, Spinner } from '@chakra-ui/react';
+import { Center, Spinner } from '@chakra-ui/react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import Navigation from './components/Navigation';
+import Shell from './components/Shell';
 import LeadsPage from './pages/LeadsPage';
 import DailyReportPage from './pages/DailyReportPage';
 import SummaryPage from './pages/SummaryPage';
@@ -11,8 +11,7 @@ export default function App() {
   const { session } = useApp();
   if (!session) return <Center minH="100vh"><Spinner color="alist.500" size="xl" /></Center>;
   return (
-    <Box minH="100vh">
-      <Navigation />
+    <Shell>
       <Routes>
         <Route path="/" element={<Navigate to="/leads" replace />} />
         <Route path="/leads" element={<LeadsPage />} />
@@ -22,6 +21,6 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/leads" replace />} />
       </Routes>
-    </Box>
+    </Shell>
   );
 }
