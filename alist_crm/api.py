@@ -292,6 +292,7 @@ def create_lead(values=None):
 	if not (payload.get("first_name") or payload.get("organization")):
 		frappe.throw("Add a lead name or organization")
 	payload.setdefault("first_name", payload.get("organization"))
+	payload.setdefault("source", payload.get("alist_channel"))
 	payload.setdefault("status", "New")
 	payload.setdefault("alist_lead_datetime", now_datetime())
 	doc = frappe.get_doc({"doctype": "CRM Lead", **payload}).insert()
@@ -306,6 +307,8 @@ def update_lead_details(name: str, values=None, modified=None):
 	values = {key: value for key, value in values.items() if key in EDITABLE_FIELDS}
 	if not values:
 		frappe.throw("No editable fields supplied")
+	if "alist_channel" in values:
+		values["source"] = values["alist_channel"]
 	doc = frappe.get_doc("CRM Lead", name)
 	if modified and str(doc.modified) != str(modified):
 		frappe.throw("This lead changed elsewhere. Refresh before saving.", frappe.TimestampMismatchError)

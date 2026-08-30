@@ -1,6 +1,6 @@
 import {
   Badge, Box, Button, Flex, Grid, HStack, IconButton, Input, InputGroup,
-  InputLeftElement, Select, SimpleGrid, Spinner, Text, VStack
+  InputLeftElement, Select, SimpleGrid, Spinner, Text
 } from '@chakra-ui/react';
 import {
   CalendarClock, ChevronLeft, ChevronRight, CircleDollarSign, Plus,
@@ -101,10 +101,10 @@ export default function LeadsPage() {
     { label: 'New', value: statusCounts.New, icon: Target, status: 'New', accent: '#eef2f7' },
     { label: 'Contacted', value: statusCounts.Contacted, icon: UserCheck, status: 'Contacted', accent: '#fff4e6' },
     {
-      label: 'Meetings',
-      value: (statusCounts['Meeting Set'] || 0) + (statusCounts['Meeting Done'] || 0),
+      label: 'Meeting set',
+      value: statusCounts['Meeting Set'],
       icon: CalendarClock,
-      status: filters.status === 'Meeting Set' ? 'Meeting Done' : 'Meeting Set',
+      status: 'Meeting Set',
       accent: '#eef2ff'
     },
     { label: 'Converted', value: statusCounts.Converted, icon: CircleDollarSign, status: 'Converted', accent: '#eafaf1' }
@@ -151,7 +151,7 @@ export default function LeadsPage() {
         <Grid flex={1} minH={0} templateColumns={{ base: 'minmax(0, 1fr)', xl: leadId ? 'minmax(680px, 1fr) 560px' : 'minmax(0, 1fr)' }}>
           <Flex minW={0} minH={0} direction="column" px={{ base: 3, xl: 5 }} py={4}>
             <Flex gap={2} mb={3} align="center" flexWrap={{ base: 'wrap', lg: 'nowrap' }}>
-              <InputGroup maxW={{ base: '100%', lg: '330px' }} bg="white">
+              <InputGroup maxW={{ base: '100%', lg: '360px' }} bg="white">
                 <InputLeftElement pointerEvents="none"><Search size={16} color="#8b95a5" /></InputLeftElement>
                 <Input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder="Search name, company, phone or email" borderColor="gray.200" />
               </InputGroup>
