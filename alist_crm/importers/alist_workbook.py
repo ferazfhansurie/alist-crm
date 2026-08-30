@@ -239,14 +239,10 @@ def _activities(raw_status: str, occurred_at, owner: str | None) -> list[dict]:
 
 
 def _import_key(channel: str, external_id: str, email: str, phone: str, lead_date, sheet: str, row: int) -> str:
-	if external_id:
-		basis = f"{channel}|external|{external_id}"
-	elif email:
-		basis = f"contact|email|{email}"
-	elif phone:
-		basis = f"contact|phone|{phone}"
-	else:
-		basis = f"{sheet}|row|{row}|{lead_date or ''}"
+	# Excel treats every source row as a lead submission, including repeat
+	# contacts and repeat platform IDs. Keep that row identity in Frappe too;
+	# contact-level deduplication would silently erase valid submissions.
+	basis = f"{sheet}|row|{row}"
 	return "xlsx:" + hashlib.sha256(basis.encode()).hexdigest()[:32]
 
 
